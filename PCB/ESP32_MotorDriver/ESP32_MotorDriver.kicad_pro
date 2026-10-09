@@ -50,52 +50,27 @@
         "silk_text_thickness": 0.1,
         "silk_text_upright": false,
         "zones": {
-          "min_clearance": 0.5
+          "border_display_style": 2,
+          "border_hatch_pitch": 0.5,
+          "corner_radius": 0.0,
+          "corner_smoothing": 0,
+          "fill_mode": 0,
+          "hatch_gap": 1.5,
+          "hatch_orientation": 0.0,
+          "hatch_smoothing_level": 0,
+          "hatch_smoothing_value": 0.1,
+          "hatch_thickness": 1.0,
+          "min_clearance": 0.5,
+          "min_island_area": 10.0,
+          "min_thickness": 0.25,
+          "pad_connection": 1,
+          "remove_islands": 0,
+          "thermal_relief_gap": 0.5,
+          "thermal_relief_spoke_width": 0.5
         }
       },
       "diff_pair_dimensions": [],
-      "drc_exclusions": [
-        [
-          "clearance|123058500|70470500|7169b073-2668-4039-b9f8-4974e786fecf|e7e9714f-f855-445a-8ed8-9c75478d4db1",
-          ""
-        ],
-        [
-          "clearance|123258500|70858000|276dffc5-765c-47e4-a950-275a8d74ee8c|7169b073-2668-4039-b9f8-4974e786fecf",
-          ""
-        ],
-        [
-          "clearance|123508500|69920500|71b6131a-3aad-40b0-bbdc-3dd2c8cfa77a|7169b073-2668-4039-b9f8-4974e786fecf",
-          ""
-        ],
-        [
-          "clearance|123508500|70470500|7169b073-2668-4039-b9f8-4974e786fecf|757374b8-5ad3-4b48-ba92-9b044fa2481f",
-          ""
-        ],
-        [
-          "clearance|123533500|69858000|4f4962e2-1eba-4e6f-aa0d-ebe530ad506d|7169b073-2668-4039-b9f8-4974e786fecf",
-          ""
-        ],
-        [
-          "clearance|123533500|70245500|7169b073-2668-4039-b9f8-4974e786fecf|7b7812a2-f96a-4b3b-8f3b-14434331d3e6",
-          ""
-        ],
-        [
-          "clearance|123883500|70795500|0146ec27-9323-4a1c-9c3d-8f8dd5c5beb2|8a32bb55-a1ea-4bdf-bcc3-a87e665d5dc2",
-          ""
-        ],
-        [
-          "clearance|124033500|70858000|37e40175-e498-40c8-b515-aa8685446cfd|8a32bb55-a1ea-4bdf-bcc3-a87e665d5dc2",
-          ""
-        ],
-        [
-          "clearance|124233500|70245500|8a32bb55-a1ea-4bdf-bcc3-a87e665d5dc2|9237867c-ae50-43de-95ab-b1c93e71a35b",
-          ""
-        ],
-        [
-          "clearance|124233500|70245500|8a32bb55-a1ea-4bdf-bcc3-a87e665d5dc2|c8125d8e-f3ac-4878-b01e-30a68419b5d8",
-          ""
-        ]
-      ],
+      "drc_exclusions": [],
       "meta": {
         "version": 2
       },
@@ -181,7 +156,7 @@
         "min_track_width": 0.2,
         "min_via_annular_width": 0.1,
         "min_via_diameter": 0.5,
-        "solder_mask_to_copper_clearance": 0.0,
+        "solder_mask_to_copper_clearance": 0.005,
         "use_height_for_length_calcs": true
       },
       "teardrop_options": [
@@ -638,6 +613,18 @@
         },
         {
           "group_by": false,
+          "label": "MANUFACTURER",
+          "name": "MANUFACTURER",
+          "show": true
+        },
+        {
+          "group_by": false,
+          "label": "MAXIMUM_PACKAGE_HEIGHT",
+          "name": "MAXIMUM_PACKAGE_HEIGHT",
+          "show": false
+        },
+        {
+          "group_by": false,
           "label": "PARTREV",
           "name": "PARTREV",
           "show": false
@@ -653,6 +640,18 @@
           "label": "PN_Digikey",
           "name": "PN_Digikey",
           "show": true
+        },
+        {
+          "group_by": false,
+          "label": "PN_Digikey_150mA",
+          "name": "PN_Digikey_150mA",
+          "show": false
+        },
+        {
+          "group_by": false,
+          "label": "PN_Digikey_600mA",
+          "name": "PN_Digikey_600mA",
+          "show": false
         },
         {
           "group_by": false,
@@ -689,12 +688,6 @@
           "label": "#",
           "name": "${ITEM_NUMBER}",
           "show": false
-        },
-        {
-          "group_by": false,
-          "label": "MANUFACTURER",
-          "name": "MANUFACTURER",
-          "show": true
         }
       ],
       "filter_string": "",
