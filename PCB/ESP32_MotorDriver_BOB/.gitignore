@@ -1,0 +1,32 @@
+# ==========================================
+# Standard KiCad .gitignore
+# ==========================================
+
+# Temporary, autosave, and backup files
+*.000
+*.bak
+*.bck
+*.kicad_pcb-bak
+*.kicad_sch-bak
+*.sch-bak
+*-backups/
+_autosave-*
+*.tmp
+*-save.pro
+*-save.kicad_pcb
+#auto_saved_files#
+~*.lck
+
+# Local workspace and view preferences (highly dynamic per user)
+*.kicad_prl
+fp-info-cache
+
+# Netlists and Autorouter logs (can be regenerated dynamically)
+*.net
+*.dsn
+*.ses
+
+# Exported files (Optional - commit these if you want to track manufacturing revisions)
+*.xml
+*.csv
+*.tsv
