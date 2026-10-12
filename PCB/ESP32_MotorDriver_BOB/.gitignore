@@ -26,7 +26,3 @@ fp-info-cache
 *.dsn
 *.ses
 
-# Exported files (Optional - commit these if you want to track manufacturing revisions)
-*.xml
-*.csv
-*.tsv

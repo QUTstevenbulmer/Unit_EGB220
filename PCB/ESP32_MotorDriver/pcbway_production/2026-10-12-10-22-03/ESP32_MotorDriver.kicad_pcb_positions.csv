@@ -1,0 +1,42 @@
+﻿pos_x,pos_y,rotation,side,designator,mpn,pack,footprint,value,mount_type
+117.348,-50.673,-90.0,bottom,C1,,,C_0805_2012Metric_Pad1.18x1.45mm_HandSolder,10uF,smt
+135.509,-85.217,90.0,bottom,C10,,,C_0805_2012Metric_Pad1.18x1.45mm_HandSolder,22uF,smt
+120.396,-80.264,180.0,top,C11,,,C_0805_2012Metric_Pad1.18x1.45mm_HandSolder,10uF,smt
+121.158,-78.613,180.0,top,C12,,,C_0402_1005Metric_Pad0.74x0.62mm_HandSolder,100nF,smt
+128.778,-84.582,90.0,bottom,C13,,,C_0402_1005Metric_Pad0.74x0.62mm_HandSolder,100nF,smt
+126.619,-74.803,0.0,bottom,C14,,,C_0402_1005Metric_Pad0.74x0.62mm_HandSolder,100nF,smt
+136.398,-80.01,90.0,top,C15,,,C_0805_2012Metric_Pad1.18x1.45mm_HandSolder,10uF,smt
+118.999,-50.673,-90.0,bottom,C2,,,C_0402_1005Metric_Pad0.74x0.62mm_HandSolder,100nF,smt
+119.38,-77.851,180.0,bottom,C3,,,C_0805_2012Metric_Pad1.18x1.45mm_HandSolder,10uF,smt
+120.015,-79.502,180.0,bottom,C4,,,C_0402_1005Metric_Pad0.74x0.62mm_HandSolder,100nF,smt
+125.984,-81.28,0.0,bottom,C5,,,C_0805_2012Metric_Pad1.18x1.45mm_HandSolder,10uF,smt
+132.207,-70.993,180.0,bottom,C6,,,C_0402_1005Metric_Pad0.74x0.62mm_HandSolder,100nF,smt
+125.984,-79.248,0.0,bottom,C7,,,C_0805_2012Metric_Pad1.18x1.45mm_HandSolder,10uF,smt
+132.207,-67.183,180.0,bottom,C8,,,C_0402_1005Metric_Pad0.74x0.62mm_HandSolder,100nF,smt
+133.477,-85.217,90.0,bottom,C9,,,C_0805_2012Metric_Pad1.18x1.45mm_HandSolder,22uF,smt
+120.65,-82.931,90.0,bottom,D1,,,D_SOD-323F,SS14HE,smt
+122.682,-82.931,90.0,bottom,D2,,,D_SOD-323F,SS14HE,smt
+133.477,-80.01,90.0,top,D3,,,D_SMA,SMAJ12A,smt
+119.126,-83.312,0.0,top,F1,,,Fuse_1812_4532Metric_Pad1.30x3.40mm_HandSolder,Polyfuse 3A,smt
+124.46,-66.04,0.0,bottom,F2,,,Fuse_0805_2012Metric_Pad1.15x1.40mm_HandSolder,Polyfuse 500mA,smt
+116.28,-70.358,-90.0,top,J1,,,USB_C_Receptacle_HRO_TYPE-C-31-M-12,USB_C_Receptacle_USB2.0,smt
+120.65,-90.678,-90.0,bottom,J2,,,PinHeader_1x06_P2.54mm_Vertical,Conn_01x06,tht
+114.3,-77.978,180.0,bottom,J4,,,PinHeader_1x05_P2.54mm_Vertical,Conn_01x05,tht
+114.3,-47.498,180.0,bottom,J6,,,PinHeader_1x07_P2.54mm_Vertical,Conn_01x07,tht
+139.7,-47.498,180.0,bottom,J7,,,PinHeader_1x17_P2.54mm_Vertical,Conn_01x17,tht
+130.937,-85.217,-90.0,bottom,L1,,,L_1008_2520Metric_Pad1.43x2.20mm_HandSolder,4.7uH,smt
+118.491,-87.884,-90.0,top,Q1,,,SOT-23,AO3407A,smt
+117.856,-70.104,0.0,bottom,R1,,,R_0402_1005Metric_Pad0.72x0.64mm_HandSolder,5k1,smt
+118.999,-88.138,0.0,bottom,R11,,,R_0402_1005Metric_Pad0.72x0.64mm_HandSolder,10k,smt
+126.675,-74.422,-90.0,top,R12,,,R_0402_1005Metric_Pad0.72x0.64mm_HandSolder,10k,smt
+117.856,-71.12,0.0,bottom,R2,,,R_0402_1005Metric_Pad0.72x0.64mm_HandSolder,5k1,smt
+132.207,-69.723,0.0,bottom,R3,,,R_0402_1005Metric_Pad0.72x0.64mm_HandSolder,10k,smt
+132.207,-68.453,0.0,bottom,R4,,,R_0402_1005Metric_Pad0.72x0.64mm_HandSolder,10k,smt
+124.46,-66.04,180.0,top,R5,,,R_0402_1005Metric_Pad0.72x0.64mm_HandSolder,22R,smt
+124.46,-65.024,180.0,top,R6,,,R_0402_1005Metric_Pad0.72x0.64mm_HandSolder,22R,smt
+134.62,-72.39,0.0,top,SW1,,,Switch SMD STO,RESET,smt
+134.62,-68.58,0.0,top,SW2,,,Switch SMD STO,BOOT,smt
+127.0,-50.8,0.0,top,U1,,,XCVR_ESP32-S2-SOLO-N4,ESP32-S2-SOLO-N4,smt
+124.6375,-70.358,0.0,top,U2,,,SOT-23-6,USBLC6-2SC6,smt
+127.0,-83.312,90.0,top,U4,,,SSOP-24_5.3x8.2mm_P0.65mm,TB6612FNG,smt
+125.984,-84.074,0.0,bottom,U5,,,TSOT-23-6,AP63203WU,smt
