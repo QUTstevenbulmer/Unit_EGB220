@@ -7,6 +7,7 @@
 //  line, either flip the sensor bar or make FOLLOW_KP negative in config.h.
 // =============================================================================
 #include "Breakout.h"
+#include "Log.h"
 #include "App.h"
 #include "config.h"
 #include "pins.h"
@@ -44,8 +45,8 @@ void linePrint(uint8_t mask) {
     char s[11] = "[........]";
     for (uint8_t i = 0; i < 8; i++) if (mask & (1 << i)) s[i + 1] = '#';
     float pos;
-    if (linePosition(mask, pos)) Serial.printf("%s  position %+.2f\n", s, pos);
-    else                         Serial.printf("%s  no line\n", s);
+    if (linePosition(mask, pos)) Log.printf("%s  position %+.2f\r\n", s, pos);
+    else                         Log.printf("%s  no line\r\n", s);
 }
 
 // --------------------------------------------------------------- LineFollower
@@ -55,7 +56,7 @@ void LineFollower::start() {
     motors.setRampTime(100);          // quick response for steering
     _running  = true;
     _lastSeen = millis();
-    Serial.println(F("[follow] started - put the robot on the line. SW2 or 'stop' to end"));
+    Log.println(F("[follow] started - put the robot on the line. SW2 or 'stop' to end"));
 }
 
 void LineFollower::stop() {
@@ -63,7 +64,7 @@ void LineFollower::stop() {
     _running = false;
     stopMotors(false);
     motors.setRampTime(_savedRamp);
-    Serial.println(F("[follow] stopped"));
+    Log.println(F("[follow] stopped"));
 }
 
 void LineFollower::update() {
@@ -76,7 +77,7 @@ void LineFollower::update() {
         int steer = (int)(FOLLOW_KP * pos);                  // the "P" in PID
         driveMotors(FOLLOW_BASE_SPEED + steer, FOLLOW_BASE_SPEED - steer);
     } else if (millis() - _lastSeen > FOLLOW_LOST_MS) {
-        Serial.println(F("[follow] line lost"));
+        Log.println(F("[follow] line lost"));
         stop();
     }
 }

@@ -1,4 +1,5 @@
 #include "HeaderIO.h"
+#include "Log.h"
 #include <Wire.h>
 #include "pins.h"
 
@@ -41,13 +42,13 @@ const HeaderPin* findHeaderPin(uint8_t gpio) {
 }
 
 void headerPrintTable() {
-    Serial.println(F("\n  Ctrl header  Pin  GPIO  Breakout board use"));
-    Serial.println(F("  -----------  ---  ----  ------------------"));
+    Log.println(F("\r\n  Ctrl header  Pin  GPIO  Breakout board use"));
+    Log.println(F("  -----------  ---  ----  ------------------"));
     for (size_t i = 0; i < HEADER_PIN_COUNT; i++) {
         const HeaderPin& p = HEADER_PINS[i];
-        Serial.printf("  %-11s  %3u  IO%-2u  %s\n", p.header, p.pin, p.gpio, p.bob);
+        Log.printf("  %-11s  %3u  IO%-2u  %s\r\n", p.header, p.pin, p.gpio, p.bob);
     }
-    Serial.println(F("  Motor pins: PWMA 10, AIN1 21, AIN2 14, PWMB 38, BIN1 36, BIN2 37, STBY 35"));
+    Log.println(F("  Motor pins: PWMA 10, AIN1 21, AIN2 14, PWMB 38, BIN1 36, BIN2 37, STBY 35"));
 }
 
 // NOTE: these raw tests take a pin away from its normal job until reboot.
@@ -62,37 +63,37 @@ void headerBlink(uint8_t gpio, uint32_t ms) {
 }
 
 void headerBlinkAll(uint32_t msEach) {
-    Serial.println(F("Blinking each header pin in turn (LED + 330R to GND, or a meter)."));
-    Serial.println(F("Press any key to stop. Reboot afterwards to restore normal use."));
+    Log.println(F("Blinking each header pin in turn (LED + 330R to GND, or a meter)."));
+    Log.println(F("Press any key to stop. Reboot afterwards to restore normal use."));
     for (size_t i = 0; i < HEADER_PIN_COUNT; i++) {
         const HeaderPin& p = HEADER_PINS[i];
-        Serial.printf("  %s pin %-2u (IO%u)  %s\n", p.header, p.pin, p.gpio, p.bob);
+        Log.printf("  %s pin %-2u (IO%u)  %s\r\n", p.header, p.pin, p.gpio, p.bob);
         headerBlink(p.gpio, msEach);
         if (Serial.available()) { while (Serial.available()) Serial.read(); break; }
     }
-    Serial.println(F("Done."));
+    Log.println(F("Done."));
 }
 
 void headerReadDigital() {
-    Serial.println(F("Raw digital levels of every header pin:"));
+    Log.println(F("Raw digital levels of every header pin:"));
     for (size_t i = 0; i < HEADER_PIN_COUNT; i++) {
         const HeaderPin& p = HEADER_PINS[i];
-        Serial.printf("  %s-%-2u IO%-2u = %d   %s\n", p.header, p.pin, p.gpio,
+        Log.printf("  %s-%-2u IO%-2u = %d   %s\r\n", p.header, p.pin, p.gpio,
                       digitalRead(p.gpio), p.bob);
     }
 }
 
 // Uses the Wire bus already started in setup() (shared with the OLED).
 void i2cScan() {
-    Serial.printf("Scanning I2C on SDA=IO%u SCL=IO%u ...\n", PIN_I2C_SDA, PIN_I2C_SCL);
+    Log.printf("Scanning I2C on SDA=IO%u SCL=IO%u ...\r\n", PIN_I2C_SDA, PIN_I2C_SCL);
     int found = 0;
     for (uint8_t addr = 1; addr < 127; addr++) {
         Wire.beginTransmission(addr);
         if (Wire.endTransmission() == 0) {
-            Serial.printf("  found device at 0x%02X%s\n", addr,
+            Log.printf("  found device at 0x%02X%s\r\n", addr,
                           addr == 0x3C ? "  (OLED display)" : "");
             found++;
         }
     }
-    if (!found) Serial.println(F("  nothing found"));
+    if (!found) Log.println(F("  nothing found"));
 }

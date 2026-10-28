@@ -13,7 +13,8 @@ static const uint8_t  SERVO_PINS[2]  = { PIN_SERVO_1, PIN_SERVO_2 };
 static const uint8_t  SERVO_CHANS[2] = { 2, 3 };       // see PwmCompat.h
 static const uint8_t  SERVO_BITS     = 14;             // 0..16383 per 20 ms
 static const uint32_t PERIOD_US      = 20000;
-static int angles[2] = { -1, -1 };
+static int  angles[2]   = { -1, -1 };          // what you asked for (0..180)
+static bool inverted[2] = { SERVO_1_INVERTED, SERVO_2_INVERTED };
 
 static void writeUs(uint8_t idx, uint32_t us) {
     uint32_t duty = (uint32_t)((uint64_t)us * ((1UL << SERVO_BITS) - 1) / PERIOD_US);
@@ -31,7 +32,15 @@ void servoWrite(uint8_t num, int degrees) {
     if (num < 1 || num > 2) return;
     degrees = constrain(degrees, 0, 180);
     angles[num - 1] = degrees;
-    writeUs(num - 1, map(degrees, 0, 180, SERVO_MIN_US, SERVO_MAX_US));
+    // A reversed servo is mounted the other way round: 0 <-> 180
+    int actual = inverted[num - 1] ? 180 - degrees : degrees;
+    writeUs(num - 1, map(actual, 0, 180, SERVO_MIN_US, SERVO_MAX_US));
+}
+
+void servoSetInverted(uint8_t num, bool inv) {
+    if (num < 1 || num > 2) return;
+    inverted[num - 1] = inv;
+    if (angles[num - 1] >= 0) servoWrite(num, angles[num - 1]);   // move to match
 }
 
 int servoAngle(uint8_t num) { return (num >= 1 && num <= 2) ? angles[num - 1] : -1; }

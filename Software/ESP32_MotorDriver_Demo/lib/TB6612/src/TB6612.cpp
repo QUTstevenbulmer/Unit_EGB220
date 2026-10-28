@@ -47,6 +47,16 @@ void TB6612Motor::setRampTime(uint32_t ms)   { _rampMs = ms; }
 void TB6612Motor::setTarget(int percent) {
     _target = constrain(percent, -100, 100);
     _braking = false;
+    _direct = false;
+}
+
+void TB6612Motor::setOutput(float percent) {
+    percent  = constrain(percent, -100.0f, 100.0f);
+    _braking = false;
+    _direct  = true;
+    _target  = (int)lroundf(percent);
+    _current = percent;
+    apply(_current);
 }
 
 void TB6612Motor::setSpeedNow(int percent) {
@@ -56,6 +66,7 @@ void TB6612Motor::setSpeedNow(int percent) {
 }
 
 void TB6612Motor::coast() {
+    _direct = false;
     _target = 0;
     _current = 0;
     _braking = false;
@@ -63,6 +74,7 @@ void TB6612Motor::coast() {
 }
 
 void TB6612Motor::brake() {
+    _direct = false;
     _target = 0;
     _current = 0;
     _braking = true;
@@ -93,7 +105,7 @@ void TB6612Motor::update() {
     uint32_t dt  = now - _lastUpdate;
     _lastUpdate  = now;
 
-    if (_braking || _current == _target) return;
+    if (_braking || _direct || _current == _target) return;
 
     if (_rampMs == 0) {
         _current = _target;

@@ -26,6 +26,8 @@ public:
 
     void  setTarget(int percent);     // smooth: ramps towards this speed
     void  setSpeedNow(int percent);   // jump straight to this speed
+    void  setOutput(float percent);   // direct power, no ramp (for a control
+                                      // loop such as PID - call it regularly)
     void  coast();                    // outputs off, motor freewheels
     void  brake();                    // short brake, motor stops quickly
     void  setInverted(bool inverted); // swap direction in software
@@ -44,6 +46,7 @@ private:
     uint32_t _maxDuty = 1023;
     bool     _inverted = false;
     bool     _braking = false;
+    bool     _direct = false;     // setOutput() in charge: don't ramp
     int      _target = 0;
     float    _current = 0;
     uint32_t _rampMs = 0;

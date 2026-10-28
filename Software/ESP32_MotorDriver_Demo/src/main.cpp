@@ -22,13 +22,18 @@
 //    src/Leds.cpp, Buttons.cpp, Servos.cpp, Encoders.cpp,
 //    src/LineSensor.cpp, Display.cpp     breakout board peripherals
 //    src/HeaderIO.cpp      raw header pin tests + I2C scan
+//    src/Settings.cpp      robot name + reverse options (saved in flash)
+//    src/SpeedControl.cpp  encoder speed control (PID) - drive straight
 // =============================================================================
 #include <Arduino.h>
+#include "Log.h"
 #include <Wire.h>
 #include "pins.h"
 #include "config.h"
 #include "App.h"
 #include "Breakout.h"
+#include "Settings.h"
+#include "SpeedControl.h"
 
 TB6612     motors;
 DemoRunner demo;
@@ -36,11 +41,21 @@ DemoRunner demo;
 // --------------------------------------------------------------- motor helpers
 void driveMotors(int a, int b) {
     if (!motors.enabled()) motors.enable(true);
-    motors.A.setTarget(a);
-    motors.B.setTarget(b);
+    if (speedEnabled()) {
+        speedSetTarget(a, b);          // % of top speed - the PID loop sets the power
+    } else {
+        motors.A.setTarget(a);         // % of battery power (ramped)
+        motors.B.setTarget(b);
+    }
+}
+
+int motorTarget(uint8_t m) {
+    if (speedEnabled()) return speedTarget(m);
+    return m == 0 ? motors.A.target() : motors.B.target();
 }
 
 void stopMotors(bool brake) {
+    speedReset();
     motors.stopAll(brake);
 }
 
@@ -54,7 +69,7 @@ void emergencyStop(const char* reason) {
     stopAllModes();
     stopMotors(true);
     motors.enable(false);
-    Serial.printf("[STOP] %s - motors in standby\n", reason);
+    Log.printf("[STOP] %s - motors in standby\r\n", reason);
     displayMessage("EMERGENCY STOP", reason);
 }
 
@@ -62,29 +77,39 @@ const char* modeName() {
     if (demo.running())     return "Demo";
     if (follower.running()) return "Line follow";
     if (webDriving())       return "Web control";
-    if (motors.A.target() || motors.B.target()) return "Manual";
+    if (motorTarget(0) || motorTarget(1)) return "Manual";
     return "Idle";
 }
 
 // ------------------------------------------------------------------ board info
 void printBoardInfo() {
     uint64_t mac = ESP.getEfuseMac();
-    Serial.println();
-    Serial.println(F("=================================================="));
-    Serial.println(F("  ESP32-S2 Motor Driver + BOB  -  demo firmware v" FW_VERSION));
-    Serial.println(F("=================================================="));
-    Serial.printf("  Chip       : %s rev %d, %u MHz\n",
+    Log.println();
+    Log.println(F("=================================================="));
+    Log.println(F("  ESP32-S2 Motor Driver + BOB  -  demo firmware v" FW_VERSION));
+    Log.println(F("=================================================="));
+    Log.printf("  Chip       : %s rev %d, %u MHz\r\n",
                   ESP.getChipModel(), ESP.getChipRevision(), ESP.getCpuFreqMHz());
-    Serial.printf("  Flash      : %u MB    Free heap: %u bytes\n",
+    Log.printf("  Flash      : %u MB    Free heap: %u bytes\r\n",
                   ESP.getFlashChipSize() / (1024 * 1024), ESP.getFreeHeap());
-    Serial.printf("  MAC        : %02X:%02X:%02X:%02X:%02X:%02X\n",
+    Log.printf("  MAC        : %02X:%02X:%02X:%02X:%02X:%02X\r\n",
                   (uint8_t)(mac), (uint8_t)(mac >> 8), (uint8_t)(mac >> 16),
                   (uint8_t)(mac >> 24), (uint8_t)(mac >> 32), (uint8_t)(mac >> 40));
-    Serial.printf("  Chip temp  : %.1f C\n", temperatureRead());
-    Serial.printf("  Motors     : %s, ramp %lu ms, PWM %d Hz\n",
+    Log.printf("  Chip temp  : %.1f C\r\n", temperatureRead());
+    Log.printf("  Motors     : %s, ramp %lu ms, PWM %d Hz\r\n",
                   motors.enabled() ? "enabled" : "standby",
                   (unsigned long)motors.rampTime(), MOTOR_PWM_FREQ_HZ);
-    Serial.printf("  OLED       : %s\n", displayOk() ? "found" : "NOT found (check BOB / I2C)");
+    Log.printf("  OLED       : %s\r\n", displayOk() ? "found" : "NOT found (check BOB / I2C)");
+    Log.printf("  Password   : %s\r\n", settingsPasswordCustom() ? "set by you (web login, hotspot, OTA)"
+                                       : "DEFAULT \"" ROBOT_PASSWORD "\" - set your own: password <new>");
+    Log.printf("  Robot name : %s%s\r\n", settingsHostname().c_str(),
+                  settingsHostnameCustom() ? "" : "  (default - change with: name <newname>)");
+    String r;
+    for (uint8_t i = 0; i < REV_COUNT; i++)
+        if (settingsReversed((RevItem)i)) r += String(REV_NAMES[i]) + " ";
+    Log.printf("  Reversed   : %s\r\n", r.length() ? r.c_str() : "nothing");
+    Log.printf("  Speed ctrl : %s\r\n", speedEnabled() ? "PID on (speeds = % of top speed)"
+                                         : speedMaxCps() > 0 ? "off (pid on to use it)" : "off, not calibrated (pid cal)");
 }
 
 // ---------------------------------------------------------------- motor demo
@@ -106,7 +131,7 @@ static const uint8_t DEMO_STEP_COUNT = sizeof(DEMO_STEPS) / sizeof(DEMO_STEPS[0]
 void DemoRunner::start() {
     stopAllModes();
     _running = true;
-    Serial.println(F("[demo] started - SW1 or 'stop' to end"));
+    Log.println(F("[demo] started - SW1 or 'stop' to end"));
     enterStep(0);
 }
 
@@ -114,14 +139,14 @@ void DemoRunner::stop() {
     if (!_running) return;
     _running = false;
     stopMotors(false);
-    Serial.println(F("[demo] stopped"));
+    Log.println(F("[demo] stopped"));
 }
 
 void DemoRunner::enterStep(uint8_t i) {
     _step = i;
     _stepStart = millis();
     const DemoStep& s = DEMO_STEPS[i];
-    Serial.printf("[demo] %s  (A=%d%%, B=%d%%)\n", s.name, s.a, s.b);
+    Log.printf("[demo] %s  (A=%d%%, B=%d%%)\r\n", s.name, s.a, s.b);
     driveMotors(s.a, s.b);
     // Wave the servos along with the motors, just for fun
     servoWrite(1, 90 + s.a * 0.8);
@@ -164,8 +189,6 @@ void setup() {
                    MOTOR_PWM_FREQ_HZ, MOTOR_PWM_BITS);
     motors.B.begin(PIN_MOTOR_B_PWM, PIN_MOTOR_B_IN1, PIN_MOTOR_B_IN2, 1,
                    MOTOR_PWM_FREQ_HZ, MOTOR_PWM_BITS);
-    motors.A.setInverted(MOTOR_A_INVERTED);
-    motors.B.setInverted(MOTOR_B_INVERTED);
     motors.setRampTime(MOTOR_RAMP_MS);
 
     Serial.begin(115200);                    // USB CDC - any baud rate works
@@ -178,6 +201,16 @@ void setup() {
     encodersBegin();
     lineBegin();
     displayBegin();
+    settingsBegin();             // robot name + reverse options saved in flash
+    speedBegin();                // encoder speed control (PID) settings
+
+    // Hold SW2 while powering on = robot password back to the default
+    if (digitalRead(PIN_SW2) == LOW) {
+        settingsSetPassword("");
+        Log.println(F("[cfg] SW2 held at power-up - robot password reset to the default"));
+        displayMessage("Password reset", ROBOT_PASSWORD);
+        delay(1500);
+    }
 
     // Hold SW1 while powering on = forget the saved WiFi network
     bool forceHotspot = digitalRead(PIN_SW1) == LOW;
@@ -202,6 +235,7 @@ void loop() {
     handleButtons();
     demo.update();
     follower.update();
+    speedUpdate();               // PID speed loop (if turned on)
     motors.update();
     encodersUpdate();
     ledsUpdate();

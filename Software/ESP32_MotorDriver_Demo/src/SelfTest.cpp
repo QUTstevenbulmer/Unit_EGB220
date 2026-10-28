@@ -9,10 +9,13 @@
 //  J5 / J6, battery on the XT30 - and the wheels OFF the table!
 // =============================================================================
 #include <Arduino.h>
+#include "Log.h"
 #include "App.h"
 #include "Breakout.h"
 #include "HeaderIO.h"
 #include "pins.h"
+#include "Settings.h"
+#include "SpeedControl.h"
 
 enum Result : uint8_t { T_PASS, T_FAIL, T_SKIP };
 
@@ -39,34 +42,34 @@ static void waitMs(uint32_t ms) {
 // Wait for y / n / s.
 static Result ask(const char* question) {
     while (Serial.available()) Serial.read();          // clear old input
-    Serial.printf("   -> %s  [y/n/s] ", question);
+    Log.printf("   -> %s  [y/n/s] ", question);
     uint32_t start = millis();
     while (millis() - start < 60000) {
         tick();
         if (Serial.available()) {
             char c = tolower(Serial.read());
-            if (c == 'y') { Serial.println("PASS"); return T_PASS; }
-            if (c == 'n') { Serial.println("FAIL"); return T_FAIL; }
-            if (c == 's') { Serial.println("skip"); return T_SKIP; }
+            if (c == 'y') { Log.println("PASS"); return T_PASS; }
+            if (c == 'n') { Log.println("FAIL"); return T_FAIL; }
+            if (c == 's') { Log.println("skip"); return T_SKIP; }
         }
     }
-    Serial.println("timeout - skipped");
+    Log.println("timeout - skipped");
     return T_SKIP;
 }
 
 static Result waitForButton(ButtonId b, const char* name) {
-    Serial.printf("   Press %s within 10 s...", name);
+    Log.printf("   Press %s within 10 s...", name);
     uint32_t start = millis();
     while (millis() - start < 10000) {
         tick();
         if (buttonDown(b)) {
-            Serial.println(" detected  PASS");
+            Log.println(" detected  PASS");
             while (buttonDown(b)) tick();                  // wait for release
             buttonPressed(b);                              // clear the event
             return T_PASS;
         }
     }
-    Serial.println(" not detected  FAIL");
+    Log.println(" not detected  FAIL");
     return T_FAIL;
 }
 
@@ -79,32 +82,37 @@ static Result motorAndEncoderTest(uint8_t m) {
     for (int dir = 0; dir < 2; dir++) {
         long before = encoderCount(m);
         int s = 40 * sign[dir];
-        Serial.printf("\n[%s] %s at 40%% for 1.5 s...\n", name, dir == 0 ? "forward" : "reverse");
+        Log.printf("\r\n[%s] %s at 40%% for 1.5 s...\r\n", name, dir == 0 ? "forward" : "reverse");
         driveMotors(m == 0 ? s : 0, m == 1 ? s : 0);
         waitMs(1500);
         stopMotors(true);
         waitMs(300);
         moved[dir] = encoderCount(m) - before;
-        Serial.printf("   encoder moved %ld counts\n", moved[dir]);
+        Log.printf("   encoder moved %ld counts\r\n", moved[dir]);
     }
 
     Result spun = ask("Did the motor spin forward, then backward (and only this one)?");
-    if (spun != T_PASS) return spun;
+    if (spun != T_PASS) {
+        Log.printf("   If it spun BACKWARD first, the wires are swapped: type 'rev %c'\r\n"
+                      "   (or tick Reverse motor %c on the web page) - no rewiring needed.\r\n",
+                      m == 0 ? 'a' : 'b', m == 0 ? 'A' : 'B');
+        return spun;
+    }
 
     if (labs(moved[0]) < 20 && labs(moved[1]) < 20) {
-        Serial.println(F("   Encoder did not count - check the encoder wires / 3V3 on the JST."));
+        Log.println(F("   Encoder did not count - check the encoder wires / 3V3 on the JST."));
         return T_FAIL;
     }
     if (moved[0] < 0 && moved[1] > 0) {
-        Serial.printf("   Encoder counts the wrong way: set ENC_%c_INVERTED true in config.h\n",
-                      m == 0 ? 'A' : 'B');
+        Log.printf("   Encoder counts the wrong way: type 'rev enc%c' (or tick it on the web page)\r\n",
+                      m == 0 ? 'a' : 'b');
         return T_FAIL;
     }
     if (!(moved[0] > 0 && moved[1] < 0)) {
-        Serial.println(F("   Encoder direction inconsistent - check channel A/B wiring."));
+        Log.println(F("   Encoder direction inconsistent - check channel A/B wiring."));
         return T_FAIL;
     }
-    Serial.println(F("   Encoder follows the motor  PASS"));
+    Log.println(F("   Encoder follows the motor  PASS"));
     return T_PASS;
 }
 
@@ -112,51 +120,53 @@ void runSelfTest() {
     resultCount = 0;
     stopAllModes();
     stopMotors(false);
+    bool pidWasOn = speedEnabled();
+    speedEnable(false, false);         // test the raw motors + encoders
     bool ledsWereAuto = ledsAuto();
     uint32_t savedRamp = motors.rampTime();
     motors.setRampTime(300);
 
-    Serial.println(F("\n========== SELF TEST =========="));
-    Serial.println(F("Answer with y (pass), n (fail) or s (skip). Wheels off the table!\n"));
+    Log.println(F("\r\n========== SELF TEST =========="));
+    Log.println(F("Answer with y (pass), n (fail) or s (skip). Wheels off the table!\r\n"));
 
     // ---- 1. MCU / USB - if you can read this, it works
     printBoardInfo();
     record("USB serial + ESP32-S2", T_PASS);
 
     // ---- 2. Power rails
-    Serial.println(F("\n[POWER] With a meter, check 3V3 (controller J7 pin 10) and +5V (BOB J8 pin 2)."));
+    Log.println(F("\r\n[POWER] With a meter, check 3V3 (controller J7 pin 10) and +5V (BOB J8 pin 2)."));
     record("3.3 V and 5 V rails", ask("3V3 = 3.2-3.4 V and +5V = 4.9-5.1 V?"));
 
     // ---- 3. LEDs
-    Serial.println(F("\n[LEDS] Lighting red, green, blue, yellow in turn..."));
+    Log.println(F("\r\n[LEDS] Lighting red, green, blue, yellow in turn..."));
     for (uint8_t i = 0; i < LED_COUNT; i++) {
         ledsAllOff();
         ledSet((LedId)i, 255);
-        Serial.printf("   %s\n", LED_NAMES[i]);
+        Log.printf("   %s\r\n", LED_NAMES[i]);
         waitMs(700);
     }
     ledsAllOff();
     record("4 LEDs", ask("Did all four light in order R, G, B, Y?"));
 
     // ---- 4. Buttons
-    Serial.println(F("\n[BUTTONS]"));
+    Log.println(F("\r\n[BUTTONS]"));
     record("Button SW1 (IO8)",   waitForButton(BTN_SW1,  "SW1"));
     record("Button SW2 (IO13)",  waitForButton(BTN_SW2,  "SW2"));
     record("BOOT button (IO0)",  waitForButton(BTN_BOOT, "BOOT on the controller"));
 
     // ---- 5. OLED
-    Serial.println(F("\n[OLED]"));
+    Log.println(F("\r\n[OLED]"));
     if (displayOk()) {
         displayMessage("SELF TEST", "Can you read me?");
         record("OLED display", ask("Does the OLED say 'Can you read me?'"));
     } else {
-        Serial.println(F("   OLED not found on I2C - running a bus scan:"));
+        Log.println(F("   OLED not found on I2C - running a bus scan:"));
         i2cScan();
         record("OLED display", T_FAIL);
     }
 
     // ---- 6. Servos
-    Serial.println(F("\n[SERVOS] Plug servos into J8 and J9 (brown/black wire = GND)."));
+    Log.println(F("\r\n[SERVOS] Plug servos into J8 and J9 (brown/black wire = GND)."));
     if (ask("Servos connected - sweep them now?") == T_PASS) {
         servoSweep(1);
         servoSweep(2);
@@ -165,14 +175,14 @@ void runSelfTest() {
     } else record("Servos J8 / J9", T_SKIP);
 
     // ---- 7. Motors + encoders
-    Serial.println(F("\n[MOTORS] Battery connected and encoder motors on J5 / J6?"));
+    Log.println(F("\r\n[MOTORS] Battery connected and encoder motors on J5 / J6?"));
     if (ask("Ready to spin motors?") == T_PASS) {
         motors.enable(true);
         encodersReset();
         record("Motor A + encoder", motorAndEncoderTest(0));
         record("Motor B + encoder", motorAndEncoderTest(1));
 
-        Serial.println(F("\n[STBY] Both motors at 50%, then STBY drops after 1 s..."));
+        Log.println(F("\r\n[STBY] Both motors at 50%, then STBY drops after 1 s..."));
         driveMotors(50, 50);
         waitMs(1000);
         motors.enable(false);
@@ -186,7 +196,7 @@ void runSelfTest() {
     }
 
     // ---- 8. Line sensor
-    Serial.println(F("\n[LINE] Connect the sensor bar to J15. Slide a black line under it."));
+    Log.println(F("\r\n[LINE] Connect the sensor bar to J15. Slide a black line under it."));
     if (ask("Watch the line sensor for 8 s?") == T_PASS) {
         uint8_t seen = 0;
         uint32_t start = millis(), last = 0;
@@ -194,32 +204,33 @@ void runSelfTest() {
             tick();
             uint8_t m = lineRead();
             seen |= m;
-            if (millis() - last > 250) { last = millis(); Serial.print("   "); linePrint(m); }
+            if (millis() - last > 250) { last = millis(); Log.print("   "); linePrint(m); }
         }
-        Serial.printf("   Sensors that saw the line: ");
+        Log.printf("   Sensors that saw the line: ");
         linePrint(seen);
         record("Line sensor J15", ask("Did each sensor react as the line passed?"));
     } else record("Line sensor J15", T_SKIP);
 
     // ---- 9. WiFi
-    Serial.println(F("\n[WIFI]"));
+    Log.println(F("\r\n[WIFI]"));
     webPrintStatus();
     record("WiFi + web page", ask("Phone connects and the page loads?"));
 
     // ---- Summary
     int fails = 0;
-    Serial.println(F("\n=========== RESULTS ==========="));
+    Log.println(F("\r\n=========== RESULTS ==========="));
     for (uint8_t i = 0; i < resultCount; i++) {
         const char* s = results[i].r == T_PASS ? "PASS" : results[i].r == T_FAIL ? "FAIL" : "skip";
         if (results[i].r == T_FAIL) fails++;
-        Serial.printf("  %-26s %s\n", results[i].name, s);
+        Log.printf("  %-26s %s\r\n", results[i].name, s);
     }
-    Serial.println(fails ? "\n  Some tests FAILED - see README 'Troubleshooting'."
-                         : "\n  No failures. Board looks good!");
-    Serial.println(F("==============================="));
+    Log.println(fails ? "\r\n  Some tests FAILED - see README 'Troubleshooting'."
+                         : "\r\n  No failures. Board looks good!");
+    Log.println(F("==============================="));
     displayMessage(fails ? "Self test: FAILED" : "Self test: PASSED",
                    fails ? "see serial monitor" : "all good :)");
 
     motors.setRampTime(savedRamp);
     ledsSetAuto(ledsWereAuto);
+    if (pidWasOn) speedEnable(true, false);
 }

@@ -51,12 +51,22 @@ void encodersBegin() {
     setupEncoder(enc[1], PIN_ENC_B_A, PIN_ENC_B_B);
 }
 
+static bool encInv[2] = { ENC_A_INVERTED, ENC_B_INVERTED };   // see Settings.cpp
+
 long encoderCount(uint8_t m) {
     if (m > 1) return 0;
     long c = enc[m].count;
-    bool inv = (m == 0) ? ENC_A_INVERTED : ENC_B_INVERTED;
-    return inv ? -c : c;
+    return encInv[m] ? -c : c;
 }
+
+void encoderSetInverted(uint8_t m, bool inverted) {
+    if (m > 1 || encInv[m] == inverted) return;
+    encInv[m] = inverted;
+    enc[m].lastCount = encoderCount(m);       // no speed glitch when flipping
+    enc[m].rate = -enc[m].rate;
+}
+
+bool encoderInverted(uint8_t m) { return m <= 1 && encInv[m]; }
 
 void encodersReset() {
     for (auto& q : enc) { noInterrupts(); q.count = 0; interrupts(); q.lastCount = 0; q.rate = 0; }

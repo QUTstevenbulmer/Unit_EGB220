@@ -39,12 +39,15 @@ void servoWrite(uint8_t num, int degrees);    // num = 1 or 2, 0..180
 int  servoAngle(uint8_t num);                 // last angle, -1 = off
 void servoOff(uint8_t num);                   // stop pulses (servo goes limp)
 void servoSweep(uint8_t num);                 // 0 -> 180 -> 90 (blocking ~2 s)
+void servoSetInverted(uint8_t num, bool inverted);  // swap 0 and 180 degrees
 
 // --------------------------------------------------------------- Encoders
 void  encodersBegin();
 void  encodersUpdate();                       // call from loop()
 long  encoderCount(uint8_t motor);            // 0 = A, 1 = B
 void  encodersReset();
+void  encoderSetInverted(uint8_t motor, bool inverted);  // count the other way
+bool  encoderInverted(uint8_t motor);
 float encoderRate(uint8_t motor);             // RPM if ENC_COUNTS_PER_REV set,
                                               // otherwise counts per second
 const char* encoderRateUnit();

@@ -13,6 +13,7 @@
 #include "Breakout.h"
 #include "App.h"
 #include "config.h"
+#include "Settings.h"
 
 static Adafruit_SSD1306 oled(128, 32, &Wire, -1);
 static bool    ok = false;
@@ -21,6 +22,11 @@ static const uint8_t PAGE_COUNT = 4;
 static uint32_t messageUntil = 0;
 
 bool displayBegin() {
+    // The Adafruit library's begin() doesn't check the display is really
+    // there (it only reserves memory), so first see if anything answers on
+    // the I2C bus at the OLED's address.
+    Wire.beginTransmission(OLED_I2C_ADDRESS);
+    if (Wire.endTransmission() != 0) { ok = false; return false; }
     ok = oled.begin(SSD1306_SWITCHCAPVCC, OLED_I2C_ADDRESS);
     if (!ok) return false;
     oled.setTextColor(SSD1306_WHITE);
@@ -50,12 +56,13 @@ void displayMessage(const char* line1, const char* line2) {
 static void pageStatus() {
     if (webIsHotspot()) {
         oled.setCursor(0, 0);  oled.print("WiFi: "); oled.print(webSsid());
-        oled.setCursor(0, 8);  oled.print("Pass: " WIFI_AP_PASSWORD);
+        oled.setCursor(0, 8);
+        oled.print(settingsPasswordCustom() ? "Pass: (your password)" : "Pass: " ROBOT_PASSWORD);
         oled.setCursor(0, 16); oled.print("http://"); oled.print(webAddress());
     } else {
         oled.setCursor(0, 0);  oled.print("WiFi: "); oled.print(webSsid());
         oled.setCursor(0, 8);  oled.print("http://"); oled.print(webAddress());
-        oled.setCursor(0, 16); oled.print(MDNS_HOSTNAME ".local");
+        oled.setCursor(0, 16); oled.print(settingsHostname()); oled.print(".local");
     }
     oled.setCursor(0, 24);
     oled.printf("%s %s", modeName(), motors.enabled() ? "" : "(stby)");
