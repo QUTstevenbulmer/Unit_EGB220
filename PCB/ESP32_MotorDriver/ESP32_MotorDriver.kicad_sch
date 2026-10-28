@@ -6652,7 +6652,7 @@
 	)
 	(text_box "15V or 5V coming in, to generate 3V3 at 500mA"
 		(exclude_from_sim no)
-		(at 93.98 258.9651 0)
+		(at 137.16 258.9651 0)
 		(size 53.34 3.9249)
 		(margins 0.9525 0.9525 0.9525 0.9525)
 		(stroke
@@ -6675,8 +6675,8 @@
 	)
 	(text_box "Design for 15V, 4A from the battery\n => 25V caps"
 		(exclude_from_sim no)
-		(at 119.38 205.74 0)
-		(size 44.45 8.89)
+		(at 120.65 205.74 0)
+		(size 60.96 8.89)
 		(margins 0.9525 0.9525 0.9525 0.9525)
 		(stroke
 			(width 0)
@@ -10722,7 +10722,7 @@
 				)
 			)
 		)
-		(property "PN_Manufacturer" ""
+		(property "PN_Manufacturer" "TYPE-C-31-M-12"
 			(at 110.49 46.99 0)
 			(show_name no)
 			(do_not_autoplace no)
@@ -10766,6 +10766,17 @@
 			)
 		)
 		(property "PN_LCSC" "C165948"
+			(at 110.49 46.99 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "MANUFACTURER" "Korean Hroparts Elec"
 			(at 110.49 46.99 0)
 			(hide yes)
 			(show_name no)
@@ -11316,17 +11327,6 @@
 			)
 		)
 		(property "PN_LCSC" "C668313"
-			(at 167.64 233.68 90)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "MANUFACTURER" "Murata"
 			(at 167.64 233.68 90)
 			(hide yes)
 			(show_name no)
@@ -12341,7 +12341,7 @@
 				)
 			)
 		)
-		(property "Footprint" "Diode_SMD:D_SOD-323F"
+		(property "Footprint" "_diodes:D_SOD-323HE_SS14HE"
 			(at 109.22 243.84 0)
 			(hide yes)
 			(show_name no)
@@ -12689,8 +12689,9 @@
 				)
 			)
 		)
-		(property "PN_Manufacturer" ""
+		(property "PN_Manufacturer" "PH1-06-UA"
 			(at 85.09 205.74 0)
+			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -12699,7 +12700,7 @@
 				)
 			)
 		)
-		(property "PN_Digikey" ""
+		(property "PN_Digikey" "2057-PH1-06-UA-ND"
 			(at 85.09 205.74 0)
 			(hide yes)
 			(show_name no)
@@ -12722,6 +12723,28 @@
 			)
 		)
 		(property "PN_Digikey_600mA" ""
+			(at 85.09 205.74 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "MANUFACTURER" "Adam Tech"
+			(at 85.09 205.74 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "PN_LCSC" "C5845077"
 			(at 85.09 205.74 0)
 			(hide yes)
 			(show_name no)
@@ -15042,8 +15065,9 @@
 				)
 			)
 		)
-		(property "PN_Manufacturer" ""
+		(property "PN_Manufacturer" "PH1-05-UA"
 			(at 165.1 101.6 0)
+			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -15052,7 +15076,29 @@
 				)
 			)
 		)
-		(property "PN_Digikey" ""
+		(property "PN_Digikey" "2057-PH1-05-UA-ND"
+			(at 165.1 101.6 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "MANUFACTURER" "Adam Tech"
+			(at 165.1 101.6 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "PN_LCSC" "C5374051"
 			(at 165.1 101.6 0)
 			(hide yes)
 			(show_name no)
@@ -17207,8 +17253,9 @@
 				)
 			)
 		)
-		(property "PN_Manufacturer" ""
+		(property "PN_Manufacturer" "PH1-07-UA"
 			(at 165.1 73.66 0)
+			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -17217,7 +17264,7 @@
 				)
 			)
 		)
-		(property "PN_Digikey" ""
+		(property "PN_Digikey" "2057-PH1-07-UA-ND"
 			(at 165.1 73.66 0)
 			(hide yes)
 			(show_name no)
@@ -17240,6 +17287,28 @@
 			)
 		)
 		(property "PN_Digikey_600mA" ""
+			(at 165.1 73.66 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "MANUFACTURER" "Adam Tech"
+			(at 165.1 73.66 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "PN_LCSC" "C3331618"
 			(at 165.1 73.66 0)
 			(hide yes)
 			(show_name no)
@@ -17546,7 +17615,7 @@
 				)
 			)
 		)
-		(property "Footprint" "Diode_SMD:D_SOD-323F"
+		(property "Footprint" "_diodes:D_SOD-323HE_SS14HE"
 			(at 109.22 233.68 0)
 			(hide yes)
 			(show_name no)
@@ -17725,8 +17794,9 @@
 				)
 			)
 		)
-		(property "PN_Manufacturer" ""
+		(property "PN_Manufacturer" "PH1-17-UA"
 			(at 200.66 86.36 0)
+			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -17735,7 +17805,29 @@
 				)
 			)
 		)
-		(property "PN_Digikey" ""
+		(property "PN_Digikey" "2057-PH1-17-UA-ND"
+			(at 200.66 86.36 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "MANUFACTURER" "Adam Tech"
+			(at 200.66 86.36 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "PN_LCSC" "C6251621"
 			(at 200.66 86.36 0)
 			(hide yes)
 			(show_name no)
@@ -17933,6 +18025,7 @@
 		)
 		(property "PN_Manufacturer" "ESP32-S2-SOLO-N4"
 			(at 55.88 63.5 0)
+			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -18230,39 +18323,6 @@
 			)
 		)
 		(property "LCSC PN" "C851816"
-			(at 113.03 195.58 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Supplier" ""
-			(at 113.03 195.58 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "PN_Digikey_150mA" ""
-			(at 113.03 195.58 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "PN_Digikey_600mA" ""
 			(at 113.03 195.58 0)
 			(hide yes)
 			(show_name no)
