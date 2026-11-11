@@ -36,8 +36,15 @@ static const char INDEX_HTML[] PROGMEM = R"HTML(
   .led { width:100%; }
   .lr.on{background:#ef4444} .lg.on{background:#22c55e} .lb.on{background:#3b82f6} .ly.on{background:#eab308;color:#111}
   .line { display:grid; grid-template-columns:repeat(8,1fr); gap:6px; margin-top:6px; }
-  .line div { height:26px; border-radius:6px; border:2px solid var(--mute); }
-  .line div.hit { background:var(--ink); border-color:var(--ink); }
+  .line > div { position:relative; height:52px; border-radius:6px; border:2px solid var(--mute); overflow:hidden; }
+  .line > div.hit { border-color:var(--acc); }
+  .line .fill { position:absolute; left:0; right:0; bottom:0; background:var(--ink); transition:height .15s; }
+  .lnum { display:grid; grid-template-columns:repeat(8,1fr); gap:6px; text-align:center; font-size:.75rem;
+          color:var(--mute); font-variant-numeric:tabular-nums; margin-top:3px; }
+  .lnum b { display:block; color:var(--ink); font-size:.85rem; }
+  .ltrack { position:relative; height:12px; margin:10px 4px 2px; border-radius:6px; background:var(--bg); }
+  .ltrack::after { content:""; position:absolute; left:50%; top:-3px; bottom:-3px; width:2px; background:var(--mute); }
+  .lmark { position:absolute; top:-4px; width:20px; height:20px; margin-left:-10px; border-radius:50%; background:var(--acc); transition:left .15s; }
   .status { color:var(--mute); font-size:.9rem; line-height:1.6; }
   label { color:var(--mute); font-size:.9rem; }
   .dot { display:inline-block; width:10px; height:10px; border-radius:50%; background:var(--mute); margin-right:4px; }
@@ -153,14 +160,28 @@ static const char INDEX_HTML[] PROGMEM = R"HTML(
   </div>
 
   <div class="card">
-    <h2>Line sensor</h2>
+    <div class="row"><h2>Line sensor</h2><span class="status" id="lineState">-</span></div>
     <div class="line" id="line"></div>
+    <div class="lnum" id="lineNums"></div>
+    <div class="ltrack"><div class="lmark" id="lineMark" style="left:50%"></div></div>
+    <div class="btns" style="margin-top:10px">
+      <button id="lineCal" class="on">Calibrate (10 s)</button>
+      <button id="lineRawBtn">Show raw</button>
+    </div>
     <details class="help"><summary>What does this do?</summary>
-      <p>The 8 boxes are the 8 infra-red sensors on the line sensor bar (J15), sensor 1 on the left.
-      Each sensor shines IR light at the floor and measures the reflection. A dark line reflects less,
-      so that sensor's box fills in.</p>
-      <p>Slide a strip of black electrical tape under the sensors to test it. If the boxes are filled everywhere
-      <b>except</b> the line, your sensor works the other way round - change <code>LINE_ACTIVE_HIGH</code> in <code>config.h</code>.</p>
+      <p>The 8 bars are the 8 infra-red sensors on the QTR-8A bar (J15), sensor 1 on the left. Each sensor shines IR
+      light at the floor and measures how much comes back. A dark line reflects less, so its bar fills up.
+      The number under each is how dark it sees: <b>0 = floor</b>, <b>1000 = line</b>. A blue outline means
+      "this sensor sees the line" (over 500). The dot underneath is the line's position, worked out from all 8.</p>
+      <p><b>A</b> = read as analog (a real voltage, 0-4095), <b>D</b> = this pin can only be read as digital (on/off).
+      Only some ESP32-S2 pins can measure voltages; the next board revision puts all 8 on analog pins.</p>
+      <p><b>Calibrate</b>: for 10 seconds, slide the bar slowly back and forth across the line so every sensor sees
+      both the line and the floor. The robot remembers each sensor's lightest and darkest reading (saved in flash)
+      and scales them all to 0-1000, so they agree with each other. The Terminal then lists each sensor:
+      <b>OK</b>, <b>weak</b> (check height - about 3 mm is best - or use matte black tape) or <b>NO CHANGE</b>
+      (that sensor or pin isn't working).</p>
+      <p><b>Show raw</b> shows the ADC readings instead (0-4095, about 0.8 mV per step).
+      Glossy electrical tape can reflect infra-red - matte tape or a laser-printed line works best.</p>
     </details>
   </div>
 
@@ -734,7 +755,32 @@ $('pwDef').onclick = () => {
 };
 
 // ---- line sensor boxes
-for (let i = 0; i < 8; i++) $('line').appendChild(document.createElement('div'));
+let lineShowRaw = false;
+for (let i = 0; i < 8; i++) {
+  const box = document.createElement('div'), fill = document.createElement('div');
+  fill.className = 'fill'; fill.style.height = '0%'; box.appendChild(fill); $('line').appendChild(box);
+  $('lineNums').appendChild(document.createElement('div'));
+}
+$('lineCal').onclick = () => {
+  if (confirm('Calibrate the line sensor? For 10 seconds, slide the bar slowly back and forth across the line.')) {
+    get('/api/line/cal'); location.hash = ''; }
+};
+$('lineRawBtn').onclick = () => { lineShowRaw = !lineShowRaw; $('lineRawBtn').classList.toggle('on', lineShowRaw);
+  $('lineRawBtn').textContent = lineShowRaw ? 'Show 0-1000' : 'Show raw'; };
+function showLine(s) {
+  if (!s.lineV) return;
+  [...$('line').children].forEach((d, i) => {
+    d.classList.toggle('hit', (s.line >> i) & 1);
+    d.firstChild.style.height = (s.lineV[i] / 10) + '%';
+  });
+  [...$('lineNums').children].forEach((d, i) => {
+    d.innerHTML = `<b>${lineShowRaw ? s.lineRaw[i] : s.lineV[i]}</b>${(s.lineAn >> i) & 1 ? 'A' : 'D'}`;
+  });
+  if (s.linePos !== null) { $('lineMark').style.left = (50 + s.linePos * 50) + '%'; $('lineMark').style.opacity = 1; }
+  else $('lineMark').style.opacity = .25;
+  $('lineState').textContent = s.lineCal === 2 ? 'Calibrating - sweep now!' : s.lineCal === 1 ? 'calibrated' : 'not calibrated';
+  $('lineState').className = 'status ' + (s.lineCal === 2 ? 'err' : s.lineCal === 1 ? 'ok' : '');
+}
 
 // ---- status, twice a second
 async function poll() {
@@ -748,7 +794,7 @@ async function poll() {
     if (!driving && !s.demo && !s.follow) zero();
     $('encA').textContent = `${s.encA}   ${s.rateA} ${s.rateUnit}`;
     $('encB').textContent = `${s.encB}   ${s.rateB} ${s.rateUnit}`;
-    [...$('line').children].forEach((d, i) => d.classList.toggle('hit', (s.line >> i) & 1));
+    showLine(s);
     $('apBanner').hidden = s.wifiMode !== 'AP';
     wifiMode = s.wifiMode;
     $('pwState').textContent = s.pwCustom ? '(set by you)' : '(still the default!)';

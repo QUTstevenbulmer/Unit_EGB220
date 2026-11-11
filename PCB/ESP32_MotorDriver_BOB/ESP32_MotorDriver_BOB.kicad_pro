@@ -269,7 +269,7 @@
       "internal_id": "",
       "mfg": "",
       "mpn": "",
-      "sch_revision": "v02"
+      "sch_revision": "v03"
     },
     "layer_pairs": [],
     "layer_presets": [],
@@ -657,18 +657,6 @@
           "label": "PN_Digikey",
           "name": "PN_Digikey",
           "show": true
-        },
-        {
-          "group_by": false,
-          "label": "PN_Digikey_150mA",
-          "name": "PN_Digikey_150mA",
-          "show": false
-        },
-        {
-          "group_by": false,
-          "label": "PN_Digikey_600mA",
-          "name": "PN_Digikey_600mA",
-          "show": false
         },
         {
           "group_by": false,

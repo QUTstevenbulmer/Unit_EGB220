@@ -238,6 +238,7 @@ void loop() {
     speedUpdate();               // PID speed loop (if turned on)
     motors.update();
     encodersUpdate();
+    lineUpdate();                // line sensor readings + calibration
     ledsUpdate();
     displayUpdate();
     delay(1);

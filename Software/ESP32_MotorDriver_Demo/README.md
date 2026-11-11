@@ -164,6 +164,25 @@ If a motor spins backwards (wires swapped, or the motors face opposite ways on a
 
 These are saved in flash. The `*_INVERTED` values in `config.h` are only the defaults for a brand-new board. Fix the motor direction first, then the encoder.
 
+### Line sensor (Pololu QTR-8A)
+
+The QTR-8A gives a **voltage** per sensor: about 0.2 V over a white floor and up to 3.3 V over a black line (or in the air). Pins the ESP32-S2 can measure (ADC: IO1–IO20) are read as **analog**; any other pin as **digital** (on/off).
+
+- **BOB v03:** the bar is on IO1–IO8, so all eight are analog. `PIN_LINE` in `pins.h` lists them **left to right**. The bar is mounted with LF_1 on the robot's right, so the list starts with LF_8. If you mount it the other way round, reverse the list.
+- **BOB v02** (older boards): only LF_5…LF_8 (IO15–18) are analog, and the pins differ. Use firmware v1.9.0 for those.
+
+**On the OLED:** while you drive from the web page, line follow, or calibrate, the OLED switches to a big line-sensor page by itself. It shows 8 bars left to right, solid when a sensor sees the line, and a block on the bottom strip for the line position. It shows `NO LINE` when the line is lost and `CALIBRATING` during a sweep. About 4 s after you stop, it goes back to the page chosen with BOOT.
+
+**Calibrate** (Test or Drive page, or `line cal`): for 10 s, slide the bar slowly back and forth across the line so every sensor sees both line and floor. Each sensor's lightest and darkest readings are saved in flash and scaled to **0 (floor) … 1000 (line)**. You then get:
+
+- a smooth line position (−1 left … +1 right), which the line follower now uses;
+- a report per sensor: **OK**, **weak** (check height or tape) or **NO CHANGE** (that sensor or pin isn't working). This is also how the self test checks the bar.
+
+Tips:
+- Power the bar from 3.3 V with its **3.3 V bypass jumper bridged**, and leave LEDON unconnected (the LEDs default to on).
+- Mount it about **3 mm** above the floor.
+- Use **matte** black: glossy electrical tape reflects IR, so a laser-printed line or gaffer tape works better.
+
 ### Two web pages
 
 | Address | Page | For |
@@ -244,6 +263,7 @@ GET /api/config?motorA=1      reverse options: motorA motorB encA encB servo1 se
 POST /api/name                form field name -> renames and reboots ("" = default name)
 POST /api/update              multipart upload of firmware.bin -> installs and reboots
 GET /api/pid                  speed control settings  (?on=1, ?kp=0.8&ki=4..., ?cal=1 = measure top speed)
+GET /api/line/cal             start a 10 s line-sensor calibration (?reset=1 forgets it)
 GET /api/setup/spin?m=0       spin motor A (m=1 B) forward 1 s -> {"counts":N}
 GET /api/log?from=N           terminal text since N (header X-Next = new N; from=-1 = all kept)
 POST /api/cmd                 form field cmd = any serial command, e.g. cmd=d 30 30
@@ -256,7 +276,8 @@ POST /api/cmd                 form field cmd = any serial command, e.g. cmd=d 30
 ```
 Motors      a <spd>   b <spd>   d <a> <b>   stop   brake   stby <0|1>   ramp <ms>   demo
 Encoders    enc            live counts + speed      enc reset
-Line        line           live sensor view         follow
+Line        line           live values 0..1000      follow
+            line cal       10 s calibration sweep   line report   line reset
 Servos      servo 1 90     servo 2 off              sweep 1
 LEDs        led r 255      led auto                 led off
 Inputs      buttons        oled (next page)         i2c (scan)
@@ -278,11 +299,11 @@ Board       pins   blink <gpio>   read   info   selftest   help
 
 | Connector | Pins | Use |
 |---|---|---|
-| **J7 XT30** | | Battery in (2S–3S). Goes through Q1 + F1 to *Vbatt* |
-| **J5 JST-XH** | 1 M+ · 2 M− · 3 3V3 · 4 enc B · 5 enc A · 6 GND | Motor A with encoder |
-| **J6 JST-XH** | same as J5 | Motor B with encoder |
-| **J8 / J9** | GND · +5V · signal | Servo 1 (IO1) / Servo 2 (IO2) |
-| **J15 2×8** | odd pins = LF_1…LF_8, even pins = GND | Line sensor (digital) |
+| **J7 XT30** | 1 GND · 2 battery + | Battery in (2S, or 18650 + boost). Through the soft switch (Q1/Q2) and F1 to *Vbatt* |
+| **J5 JST** | 1 M1.1 · 2 3V3 · 3 enc B · 4 enc A · 5 GND · 6 M1.2 | Motor A with encoder |
+| **J6 JST** | 1 M2.2 · 2 3V3 · 3 enc B · 4 enc A · 5 GND · 6 M2.1 | Motor B with encoder (motor pins mirrored) |
+| **J8 / J9** | GND · +5V · signal | Servo 1 (IO42) / Servo 2 (IO41) |
+| **J15 2×8** | odd pins 1…15 = LF_8…LF_1 · 2–12 GND · 14 +3V3 · 16 LEDON (JP1 → 3V3) | QTR-8A line sensor (analog) |
 | **J14 2×3** | GND · +5V · RXD · TXD · SDA_5V · SCL_5V | 5 V I2C (via PCA9306) + UART |
 | **U2** | I2C 0x3C | 0.91" 128×32 OLED |
 
@@ -290,12 +311,14 @@ Board       pins   blink <gpio>   read   info   selftest   help
 
 | Function | GPIO | | Function | GPIO |
 |---|---|---|---|---|
-| Motor A PWM / IN1 / IN2 | 10 / 21 / 14 | | LED red / green / blue / yellow | 4 / 5 / 6 / 7 |
-| Motor B PWM / IN1 / IN2 | 38 / 36 / 37 | | SW1 / SW2 / BOOT | 8 / 13 / 0 |
-| Motor STBY | 35 | | Servo 1 / 2 | 1 / 2 |
-| Encoder A: ch A / ch B | 9 / 3 | | Line LF_1 … LF_4 | 42, 41, 40, 39 |
-| Encoder B: ch A / ch B | 12 / 11 | | Line LF_5 … LF_8 | 18, 17, 16, 15 |
+| Motor A PWM / IN1 / IN2 | 10 / 21 / 14 | | LED red / green / blue / yellow | 40 / 39 / 17 / 18 |
+| Motor B PWM / IN1 / IN2 | 38 / 36 / 37 | | SW1 / SW2 / BOOT | 9 / 13 / 0 |
+| Motor STBY | 35 | | Servo 1 / 2 | 42 / 41 |
+| Encoder A: ch A / ch B | 16 / 15 | | Line LF_1 … LF_4 | 1, 2, 3, 8 |
+| Encoder B: ch A / ch B | 12 / 11 | | Line LF_5 … LF_8 | 7, 6, 5, 4 |
 | I2C SDA / SCL | 34 / 33 | | UART TX / RX | 43 / 44 |
+
+This is **BOB v03**. The line sensor is on IO1–IO8, so all eight channels are analog (ADC1).
 
 Every GPIO is now used, so add more I/O with I2C modules on J14.
 
@@ -308,7 +331,8 @@ Every GPIO is now used, so add more I/O with I2C modules on J14.
 | `MOTOR_A_INVERTED` / `MOTOR_B_INVERTED` | Default direction for a new board. Normally change it at run time instead (`rev a`, or the web page). |
 | `ENC_COUNTS_PER_REV` | Pulses × 4 × gear ratio (e.g. 7 × 4 × 100 = 2800). With 0, speed shows as counts/s. |
 | `ENC_A_INVERTED` / `ENC_B_INVERTED` | Defaults. `selftest` tells you if an encoder counts backwards; fix it with `rev enca` / `rev encb`. |
-| `LINE_ACTIVE_HIGH` | Flip if your sensor bar reads "line" on white instead of black. |
+| `LINE_ACTIVE_HIGH` | `true` for the QTR-8A on a black line (high voltage = dark). Flip if line and floor read the wrong way round. |
+| `LINE_THRESHOLD`, `LINE_CAL_MS`, `LINE_SAMPLES` | "Sees the line" level (0–1000), calibration time, ADC readings averaged. |
 | `FOLLOW_BASE_SPEED`, `FOLLOW_KP` | Line-follow tuning. If the robot steers *away* from the line, make `FOLLOW_KP` negative. |
 | `SERVO_MIN_US` / `SERVO_MAX_US` | Pulse range of your servos. |
 | `SERVO_1_INVERTED` / `SERVO_2_INVERTED` | Defaults; change at run time with `rev s1` / `rev s2`. |
@@ -341,7 +365,7 @@ Every GPIO is now used, so add more I/O with I2C modules on J14.
 | Can't find the robot after saving WiFi | Check the OLED for its IP. Is your phone on the same network? Is it 2.4 GHz? Hold SW1 at power-up to start over. |
 | Encoder shows 0 | Check the JST wiring and that the encoder runs on 3.3 V. |
 | Servos jitter or the board resets | Servos are pulling the 5 V regulator down. See hardware notes. |
-| Line sensor always "none" | J15 has no power pin; the sensor bar needs 3V3 from elsewhere. Check `LINE_ACTIVE_HIGH`. |
+| Line sensor always "none" / flickery | J15 has no power pin: power the bar from 3V3 and bridge its 3.3 V jumper. Keep it about 3 mm off the floor and use matte black (glossy tape reflects IR). Run `line cal`, then `line report`. |
 
 ---
 
@@ -374,7 +398,7 @@ src/Leds.cpp                status LEDs
 src/Buttons.cpp             debounced buttons (short / long press)
 src/Servos.cpp              servo PWM
 src/Encoders.cpp            interrupt-driven quadrature decoding
-src/LineSensor.cpp          line sensor + line-follow P controller
+src/LineSensor.cpp          QTR-8A line sensor (analog + calibration) + line-follow P controller
 src/Display.cpp             OLED pages
 src/HeaderIO.cpp            pin map, raw pin tests, I2C scan
 src/Settings.cpp            robot name + reverse options (saved in flash)

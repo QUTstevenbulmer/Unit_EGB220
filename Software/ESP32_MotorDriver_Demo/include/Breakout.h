@@ -10,6 +10,7 @@
 // =============================================================================
 #pragma once
 #include <Arduino.h>
+#include "config.h"
 
 // ------------------------------------------------------------------- LEDs
 enum LedId : uint8_t { LED_RED, LED_GREEN, LED_BLUE, LED_YELLOW, LED_COUNT };
@@ -53,10 +54,20 @@ float encoderRate(uint8_t motor);             // RPM if ENC_COUNTS_PER_REV set,
 const char* encoderRateUnit();
 
 // ------------------------------------------------------------ Line sensor
-void    lineBegin();
-uint8_t lineRead();                           // bit 0 = LF_1 ... bit 7 = LF_8
-bool    linePosition(uint8_t mask, float& pos); // -1 (left) .. +1 (right)
-void    linePrint(uint8_t mask);              // e.g.  [..##....]
+void     lineBegin();
+void     lineUpdate();                        // call from loop()
+uint8_t  lineRead();                          // bit 0 = LF_1 ... bit 7 = LF_8 (sees line)
+uint16_t lineValue(uint8_t i);                // 0 = floor ... 1000 = line (calibrated)
+uint16_t lineRaw(uint8_t i);                  // raw ADC 0..4095 (digital pins: 0 / 4095)
+bool     lineIsAnalog(uint8_t i);             // is this pin read as analog?
+bool     lineSmoothPosition(float& pos);      // -1 (left) .. +1 (right), from the values
+bool     linePosition(uint8_t mask, float& pos); // same, from the on/off mask
+void     linePrint(uint8_t mask);             // e.g.  [..##....]  pos +0.12 | values
+void     lineCalStart(uint32_t ms = LINE_CAL_MS);   // sweep the bar over line + floor
+bool     lineCalibrating();
+bool     lineCalibrated();
+void     lineCalReset();
+void     lineCalReport();                     // per-sensor floor/line readings + verdict
 
 class LineFollower {
 public:

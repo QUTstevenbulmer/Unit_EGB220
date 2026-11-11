@@ -31,7 +31,10 @@ void menuPrintHelp() {
         "  Breakout board\r\n"
         "    enc                encoder counts + speed (any key stops)\r\n"
         "    enc reset          zero the encoder counts\r\n"
-        "    line               live line-sensor view (any key stops)\r\n"
+        "    line               live line-sensor view: values 0 (floor)..1000 (line)\r\n"
+        "    line cal           calibrate: sweep the bar over line + floor for 10 s\r\n"
+        "    line report        per-sensor floor / line readings (checks each pin)\r\n"
+        "    line reset         forget the calibration\r\n"
         "    follow             start/stop line following   (or SW2)\r\n"
         "    servo <1|2> <deg>  move a servo (0..180)       e.g.  servo 1 90\r\n"
         "    servo <1|2> off    stop driving a servo\r\n"
@@ -71,7 +74,7 @@ template <typename F> static void liveView(F fn) {
     Log.println(F("(press any key to stop)"));
     uint32_t last = 0;
     while (!Serial.available()) {
-        webHandle(); motors.update(); encodersUpdate(); ledsUpdate(); displayUpdate();
+        webHandle(); motors.update(); encodersUpdate(); lineUpdate(); ledsUpdate(); displayUpdate();
         follower.update(); demo.update();
         if (millis() - last >= 200) { last = millis(); fn(); }
         delay(2);
@@ -171,7 +174,7 @@ static void doCommand(char* line, bool fromWeb) {
 
     // These wait for key presses on the USB serial monitor (or tie the robot
     // up for a long time), so they can't be run from the web terminal.
-    if (fromWeb && ((c == "enc" && s1 != "reset") || c == "line" || c == "buttons" ||
+    if (fromWeb && ((c == "enc" && s1 != "reset") || (c == "line" && s1 != "cal" && s1 != "report" && s1 != "reset") || c == "buttons" ||
                     (c == "wifi" && s1 == "set") || c == "selftest" || c == "blink")) {
         Log.printf("'%s' needs the USB serial monitor (it waits for key presses).\r\n", cmd);
         if (c == "enc" || c == "line" || c == "buttons")
@@ -198,6 +201,9 @@ static void doCommand(char* line, bool fromWeb) {
                           encoderCount(1), encoderRate(1), encoderRateUnit());
         });
     }
+    else if (c == "line" && s1 == "cal")    { lineCalStart(); }
+    else if (c == "line" && s1 == "report") { lineCalReport(); }
+    else if (c == "line" && s1 == "reset")  { lineCalReset(); }
     else if (c == "line")               { liveView([] { linePrint(lineRead()); }); }
     else if (c == "follow")             { follower.toggle(); }
     else if (c == "servo" && p1 && p2) {

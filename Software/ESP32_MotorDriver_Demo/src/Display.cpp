@@ -4,7 +4,8 @@
 //  Press the BOOT button to flip between pages:
 //      0  WiFi       network name, password (hotspot), address, mode
 //      1  Motors     speed % and encoder count / speed for both motors
-//      2  Line       live picture of the 8 line sensors
+//      2  Line       big bars for the 8 line sensors + line position
+//                    (shown automatically while driving / line following)
 //      3  Inputs     buttons, servos, chip temperature
 // =============================================================================
 #include <Wire.h>
@@ -80,17 +81,41 @@ static void pageEncoders() {
                 encoderRate(1), encoderRateUnit());
 }
 
+// Page 2: line sensor, big enough to read from across the room.
+//   8 bars, left to right across the robot. Each fills with how strongly that
+//   sensor sees the line (0..1000). Over LINE_THRESHOLD = solid bar ("sees
+//   the line"); below it = outline with a partial fill. The block on the
+//   strip at the bottom is the line's position (centre tick = straight ahead).
+static void banner(const char* text) {           // inverted label over the bars
+    int w = strlen(text) * 6 + 8;
+    int x = (128 - w) / 2;
+    oled.fillRect(x, 8, w, 11, SSD1306_WHITE);
+    oled.setTextColor(SSD1306_BLACK);
+    oled.setCursor(x + 4, 10);
+    oled.print(text);
+    oled.setTextColor(SSD1306_WHITE);
+}
+
 static void pageLine() {
-    uint8_t mask = lineRead();
-    oled.setCursor(0, 0);
     float pos;
-    if (linePosition(mask, pos)) oled.printf("Line  pos %+.2f", pos);
-    else                         oled.print("Line  (none)");
-    for (uint8_t i = 0; i < 8; i++) {                     // 8 boxes, 16 px apart
-        int x = i * 16 + 2;
-        if (mask & (1 << i)) oled.fillRect(x, 14, 12, 16, SSD1306_WHITE);
-        else                 oled.drawRect(x, 14, 12, 16, SSD1306_WHITE);
+    bool seen = lineSmoothPosition(pos);
+    for (uint8_t i = 0; i < 8; i++) {
+        int x = i * 16 + 1;
+        uint16_t v = lineValue(i);
+        int h = v * 24 / 1000;
+        if (v > LINE_THRESHOLD) {
+            oled.fillRect(x, 24 - h, 14, h, SSD1306_WHITE);          // sees the line
+        } else {
+            oled.drawRect(x, 0, 14, 25, SSD1306_WHITE);
+            if (h > 0) oled.fillRect(x + 2, 24 - h, 10, h, SSD1306_WHITE);
+        }
     }
+    oled.drawFastHLine(0, 27, 128, SSD1306_WHITE);                  // position strip
+    oled.fillRect(63, 26, 2, 3, SSD1306_WHITE);                      // centre tick
+    if (seen) oled.fillRect(64 + (int)(pos * 56) - 5, 26, 11, 6, SSD1306_WHITE);
+
+    if (lineCalibrating())    banner("CALIBRATING");
+    else if (!seen)           banner("NO LINE");
 }
 
 static void pageInputs() {
@@ -102,14 +127,30 @@ static void pageInputs() {
     oled.printf("Chip %.1fC  v%s", temperatureRead(), FW_VERSION);
 }
 
+// While the robot is being driven from the web page, line following or
+// calibrating the line sensor, the line page is shown automatically. A few
+// seconds after that stops, the display goes back to the page you chose
+// with BOOT.
+static const uint32_t AUTO_LINE_HOLD_MS = 4000;
+
 void displayUpdate() {
-    static uint32_t last = 0;
-    if (!ok || millis() - last < 200 || millis() < messageUntil) return;   // 5x a second
+    static uint32_t last = 0, lineActiveAt = 0;
+    static bool lineActiveSeen = false;
+    if (webDriving() || follower.running() || lineCalibrating()) {
+        lineActiveAt = millis();
+        lineActiveSeen = true;
+    }
+    bool autoLine = lineActiveSeen && millis() - lineActiveAt < AUTO_LINE_HOLD_MS;
+    uint8_t show = autoLine ? 2 : page;
+
+    // 10x a second on the line page (it's for driving), 5x on the others
+    uint32_t interval = show == 2 ? 100 : 200;
+    if (!ok || millis() - last < interval || millis() < messageUntil) return;
     last = millis();
 
     oled.clearDisplay();
     oled.setTextSize(1);
-    switch (page) {
+    switch (show) {
         case 0: pageStatus();   break;
         case 1: pageEncoders(); break;
         case 2: pageLine();     break;

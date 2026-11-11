@@ -101,10 +101,13 @@
 #define SERVO_2_INVERTED      false
 
 // ---------------------------------------------------------------------------
-//  Line sensor (J15)
-//  Most IR modules output HIGH over a black line. Flip if yours is opposite.
+//  Line sensor (J15) - Pololu QTR-8A (analog: high voltage = dark/line)
+//  Calibrate with "line cal" or the web pages (sweep over line + floor).
 // ---------------------------------------------------------------------------
-#define LINE_ACTIVE_HIGH      true
+#define LINE_ACTIVE_HIGH      true    // true: high reading = line (QTR-8A on a black line)
+#define LINE_THRESHOLD        500     // 0..1000: above this a sensor "sees" the line
+#define LINE_CAL_MS           10000   // calibration sweep time
+#define LINE_SAMPLES          4       // ADC readings averaged per sensor
 #define FOLLOW_BASE_SPEED     35      // % - cruising speed when line following
 #define FOLLOW_KP             40      // steering strength (try 20..80)
 #define FOLLOW_LOST_MS        400     // stop if the line is lost this long
@@ -121,4 +124,4 @@
 #define LOG_BUFFER_BYTES      6144
 
 // Firmware version shown in the banner, OLED and web page
-#define FW_VERSION            "1.8.0"
+#define FW_VERSION            "1.10.1"

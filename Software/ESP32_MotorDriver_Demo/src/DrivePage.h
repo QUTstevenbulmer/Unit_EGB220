@@ -34,7 +34,7 @@ static const char DRIVE_HTML[] PROGMEM = R"HTML(
   .sensors { display:grid; grid-template-columns:repeat(8,1fr); gap:6px; }
   .sensors div { height:36px; border-radius:8px; border:2px solid var(--mute); display:flex; align-items:flex-end;
                  justify-content:center; font-size:.75rem; color:var(--mute); padding-bottom:2px; }
-  .sensors div.hit { background:var(--line); border-color:var(--line); color:var(--card); }
+  .sensors div.hit { border-color:var(--acc); }
   .track { position:relative; height:16px; margin:12px 4px 4px; border-radius:8px; background:var(--bg); }
   .track::after { content:""; position:absolute; left:50%; top:-3px; bottom:-3px; width:2px; background:var(--mute); }
   .marker { position:absolute; top:-4px; width:24px; height:24px; margin-left:-12px; border-radius:50%;
@@ -73,7 +73,8 @@ static const char DRIVE_HTML[] PROGMEM = R"HTML(
 
   <!-- 1. Line sensor + 2. joystick: together on one phone screen -->
   <div class="card">
-    <div class="row"><h2>Line sensor</h2><span class="mute" id="posTxt">-</span></div>
+    <div class="row"><h2>Line sensor</h2><span class="mute" id="posTxt">-</span>
+      <button id="lineCal" style="padding:4px 10px;font-size:.8rem">Calibrate</button></div>
     <div class="sensors" id="sensors"></div>
     <div class="track"><div class="marker lost" id="marker" style="left:50%"></div></div>
   </div>
@@ -143,6 +144,7 @@ window.fetch = (...a) => _fetch(...a).then(r => {
 });
 const $ = id => document.getElementById(id);
 const get = url => fetch(url).catch(() => {});
+const dark = matchMedia('(prefers-color-scheme: dark)').matches;
 let sx = 0, sy = 0;              // joystick -1..1 (x right, y forward)
 let padHeld = false, wasDriving = false;
 const keys = {};
@@ -224,6 +226,9 @@ $('pidBtn').onclick = async () => {
   } catch (e) {}
   poll();
 };
+$('lineCal').onclick = () => {
+  if (confirm('Calibrate the line sensor? For 10 s, slide the robot slowly from side to side across the line.')) get('/api/line/cal');
+};
 $('follow').onclick = () => { release(); wasDriving = false; get('/api/follow'); };
 document.addEventListener('visibilitychange', () => { if (document.hidden && wasDriving) stopAll(false); });
 
@@ -231,20 +236,20 @@ document.addEventListener('visibilitychange', () => { if (document.hidden && was
 async function poll() {
   try {
     const s = await (await fetch('/api/status')).json();
-    let n = 0, sum = 0;
+    // Each box gets darker the more that sensor sees the line (0..1000)
     [...$('sensors').children].forEach((d, i) => {
-      const hit = (s.line >> i) & 1;
-      d.classList.toggle('hit', !!hit);
-      if (hit) { n++; sum += i - 3.5; }
+      const v = s.lineV ? s.lineV[i] : ((s.line >> i) & 1) * 1000;
+      d.classList.toggle('hit', !!((s.line >> i) & 1));
+      d.style.background = `rgba(${dark ? '243,244,246' : '17,24,39'},${(v / 1000).toFixed(2)})`;
     });
-    if (n) {
-      const pos = sum / n / 3.5;                    // -1 = far left, +1 = far right
+    const pos = s.linePos;                          // -1 = far left, +1 = far right (smooth)
+    if (pos !== null && pos !== undefined) {
       $('marker').style.left = (50 + pos * 50) + '%';
       $('marker').classList.remove('lost');
-      $('posTxt').textContent = 'position ' + (pos >= 0 ? '+' : '') + pos.toFixed(2);
+      $('posTxt').textContent = 'position ' + (pos >= 0 ? '+' : '') + pos.toFixed(2) + (s.lineCal ? '' : ' (not calibrated)');
     } else {
       $('marker').classList.add('lost');
-      $('posTxt').textContent = 'no line';
+      $('posTxt').textContent = s.lineCal === 2 ? 'calibrating - sweep!' : 'no line';
     }
     $('mode').textContent = s.mode;
     $('aNow').textContent = s.aNow + ' %';

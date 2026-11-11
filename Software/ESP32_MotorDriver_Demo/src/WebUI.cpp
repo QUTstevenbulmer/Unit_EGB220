@@ -40,6 +40,7 @@
 //                                   encB, servo1, servo2 = 0 or 1) - saved
 //    POST /api/name                 name=<hostname>  ("" = default) - reboots
 //    GET  /api/pid[?on=1&kp=..&ki=..&kd=..&ks=..&cal=1]   speed control (PID)
+//    GET  /api/line/cal[?reset=1]   start a line-sensor calibration sweep (or forget it)
 //    GET  /api/setup/spin?m=0       spin motor A (m=1: B) forward 1 s, returns encoder counts
 //    POST /api/update               multipart upload of firmware.bin
 //    GET/POST /login                log in (pw=<robot password>) -> session cookie
@@ -512,7 +513,28 @@ static void handleStatus() {
         settingsPasswordCustom() ? "true" : "false",
         speedEnabled() ? "true" : "false", speedMaxCps() > 0 ? "true" : "false",
         motorTarget(0), motorTarget(1), speedMeasured(0), speedMeasured(1));
-    server.send(200, "application/json", json);
+
+    // Line sensor detail: values 0..1000, raw ADC, which pins are analog,
+    // calibration state (0 none, 1 done, 2 running) and the smooth position
+    String j = json;
+    j.remove(j.length() - 1);                        // drop the closing }
+    j += ",\"lineV\":[";
+    for (uint8_t i = 0; i < 8; i++) { if (i) j += ','; j += lineValue(i); }
+    j += "],\"lineRaw\":[";
+    for (uint8_t i = 0; i < 8; i++) { if (i) j += ','; j += lineRaw(i); }
+    uint8_t an = 0;
+    for (uint8_t i = 0; i < 8; i++) if (lineIsAnalog(i)) an |= 1 << i;
+    float pos;
+    j += "],\"lineAn\":" + String(an) + ",\"lineCal\":" + String(lineCalibrating() ? 2 : lineCalibrated() ? 1 : 0) +
+         ",\"linePos\":" + (lineSmoothPosition(pos) ? String(pos, 2) : String("null")) + "}";
+    server.send(200, "application/json", j);
+}
+
+// Line sensor calibration: /api/line/cal starts a sweep, ?reset=1 forgets it
+static void handleLineCal() {
+    if (server.hasArg("reset")) lineCalReset();
+    else lineCalStart();
+    ok();
 }
 
 // Network scan runs in the background so the robot keeps running.
@@ -792,6 +814,7 @@ void webBegin(bool forceHotspot) {
     api("/api/config", handleConfig);
     api("/api/name", handleName, HTTP_POST);
     api("/api/pid", handlePid);
+    api("/api/line/cal", handleLineCal);
     api("/api/setup/spin", handleSetupSpin);
     server.on("/api/update", HTTP_POST, [] { if (guard(false)) handleUpdateDone(); }, handleUpdateUpload);
     server.onNotFound(handleNotFound);

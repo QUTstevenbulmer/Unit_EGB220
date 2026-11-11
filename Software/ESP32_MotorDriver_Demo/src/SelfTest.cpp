@@ -30,7 +30,7 @@ static void record(const char* name, Result r) {
 
 // Keep the background jobs running while a test waits.
 static void tick() {
-    motors.update(); encodersUpdate(); buttonsUpdate(); displayUpdate();
+    motors.update(); encodersUpdate(); lineUpdate(); buttonsUpdate(); displayUpdate();
     delay(5);
 }
 
@@ -150,7 +150,7 @@ void runSelfTest() {
 
     // ---- 4. Buttons
     Log.println(F("\r\n[BUTTONS]"));
-    record("Button SW1 (IO8)",   waitForButton(BTN_SW1,  "SW1"));
+    record("Button SW1 (IO9)",   waitForButton(BTN_SW1,  "SW1"));
     record("Button SW2 (IO13)",  waitForButton(BTN_SW2,  "SW2"));
     record("BOOT button (IO0)",  waitForButton(BTN_BOOT, "BOOT on the controller"));
 
@@ -195,20 +195,19 @@ void runSelfTest() {
         record("STBY stops motors", T_SKIP);
     }
 
-    // ---- 8. Line sensor
-    Log.println(F("\r\n[LINE] Connect the sensor bar to J15. Slide a black line under it."));
-    if (ask("Watch the line sensor for 8 s?") == T_PASS) {
-        uint8_t seen = 0;
-        uint32_t start = millis(), last = 0;
-        while (millis() - start < 8000) {
+    // ---- 8. Line sensor: a calibration sweep checks every channel
+    Log.println(F("\r\n[LINE] Connect the QTR-8A bar to J15, about 3 mm above a white surface"));
+    Log.println(F("       with a black line. You'll sweep it across the line for 10 s."));
+    if (ask("Start the line sensor sweep?") == T_PASS) {
+        lineCalStart();
+        uint32_t last = 0;
+        while (lineCalibrating()) {
             tick();
-            uint8_t m = lineRead();
-            seen |= m;
-            if (millis() - last > 250) { last = millis(); Log.print("   "); linePrint(m); }
+            if (millis() - last > 500) { last = millis(); Log.print("   "); linePrint(lineRead()); }
         }
-        Log.printf("   Sensors that saw the line: ");
-        linePrint(seen);
-        record("Line sensor J15", ask("Did each sensor react as the line passed?"));
+        // lineUpdate() has just printed the per-sensor report
+        Log.println(F("   Each sensor should say OK. 'NO CHANGE' = that sensor or pin isn't working."));
+        record("Line sensor J15", ask("Did the report show OK for the sensors you expect?"));
     } else record("Line sensor J15", T_SKIP);
 
     // ---- 9. WiFi
