@@ -166,14 +166,14 @@ These are saved in flash. The `*_INVERTED` values in `config.h` are only the def
 
 ### Line sensor (Pololu QTR-8A)
 
-The QTR-8A gives a **voltage** per sensor: about 0.2 V over a white floor and up to 3.3 V over a black line (or in the air). Pins the ESP32-S2 can measure (ADC: IO1–IO20) are read as **analog**; any other pin as **digital** (on/off).
+The QTR-8A gives a **voltage** per sensor: about 0.2 V over white and up to 3.3 V over black (or in the air). The firmware is set for a **white line on a dark floor**. For a black line on a light floor, set `LINE_ACTIVE_HIGH` to `true`. Pins the ESP32-S2 can measure (ADC: IO1–IO20) are read as **analog**; any other pin as **digital** (on/off).
 
 - **BOB v03:** the bar is on IO1–IO8, so all eight are analog. `PIN_LINE` in `pins.h` lists them **left to right**. The bar is mounted with LF_1 on the robot's right, so the list starts with LF_8. If you mount it the other way round, reverse the list.
 - **BOB v02** (older boards): only LF_5…LF_8 (IO15–18) are analog, and the pins differ. Use firmware v1.9.0 for those.
 
 **On the OLED:** while you drive from the web page, line follow, or calibrate, the OLED switches to a big line-sensor page by itself. It shows 8 bars left to right, solid when a sensor sees the line, and a block on the bottom strip for the line position. It shows `NO LINE` when the line is lost and `CALIBRATING` during a sweep. About 4 s after you stop, it goes back to the page chosen with BOOT.
 
-**Calibrate** (Test or Drive page, or `line cal`): for 10 s, slide the bar slowly back and forth across the line so every sensor sees both line and floor. Each sensor's lightest and darkest readings are saved in flash and scaled to **0 (floor) … 1000 (line)**. You then get:
+**Calibrate** (Test or Drive page, or `line cal`). Within the 10 s, **every sensor must see both surfaces**. The easiest way is to hold the whole bar over the line colour for a few seconds, then over the floor colour. Or slide the robot sideways so the line passes under all eight, from beyond one end to beyond the other. Each sensor's lightest and darkest readings are saved in flash and scaled to **0 (floor) … 1000 (line)**. You then get:
 
 - a smooth line position (−1 left … +1 right), which the line follower now uses;
 - a report per sensor: **OK**, **weak** (check height or tape) or **NO CHANGE** (that sensor or pin isn't working). This is also how the self test checks the bar.
@@ -331,7 +331,7 @@ Every GPIO is now used, so add more I/O with I2C modules on J14.
 | `MOTOR_A_INVERTED` / `MOTOR_B_INVERTED` | Default direction for a new board. Normally change it at run time instead (`rev a`, or the web page). |
 | `ENC_COUNTS_PER_REV` | Pulses × 4 × gear ratio (e.g. 7 × 4 × 100 = 2800). With 0, speed shows as counts/s. |
 | `ENC_A_INVERTED` / `ENC_B_INVERTED` | Defaults. `selftest` tells you if an encoder counts backwards; fix it with `rev enca` / `rev encb`. |
-| `LINE_ACTIVE_HIGH` | `true` for the QTR-8A on a black line (high voltage = dark). Flip if line and floor read the wrong way round. |
+| `LINE_ACTIVE_HIGH` | `false` = white line on a dark floor (default). `true` = black line on a light floor. Recalibrate after changing. |
 | `LINE_THRESHOLD`, `LINE_CAL_MS`, `LINE_SAMPLES` | "Sees the line" level (0–1000), calibration time, ADC readings averaged. |
 | `FOLLOW_BASE_SPEED`, `FOLLOW_KP` | Line-follow tuning. If the robot steers *away* from the line, make `FOLLOW_KP` negative. |
 | `SERVO_MIN_US` / `SERVO_MAX_US` | Pulse range of your servos. |
@@ -365,6 +365,8 @@ Every GPIO is now used, so add more I/O with I2C modules on J14.
 | Can't find the robot after saving WiFi | Check the OLED for its IP. Is your phone on the same network? Is it 2.4 GHz? Hold SW1 at power-up to start over. |
 | Encoder shows 0 | Check the JST wiring and that the encoder runs on 3.3 V. |
 | Servos jitter or the board resets | Servos are pulling the 5 V regulator down. See hardware notes. |
+| Some line sensors stuck at 1000 | Check **Show raw**. High raw (about 4095) means that sensor really sees "dark": it's off the white, or check its voltage at J15 against the bar. Moderate raw means an old calibration, so run `line reset` then `line cal`. |
+| Line readings jumpy | Run `line noise` with the bar still. Anything over about 150 is noisy, so check that channel's wiring. |
 | Line sensor always "none" / flickery | J15 has no power pin: power the bar from 3V3 and bridge its 3.3 V jumper. Keep it about 3 mm off the floor and use matte black (glossy tape reflects IR). Run `line cal`, then `line report`. |
 
 ---

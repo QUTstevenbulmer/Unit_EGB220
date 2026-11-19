@@ -67,7 +67,8 @@ void     lineCalStart(uint32_t ms = LINE_CAL_MS);   // sweep the bar over line +
 bool     lineCalibrating();
 bool     lineCalibrated();
 void     lineCalReset();
-void     lineCalReport();                     // per-sensor floor/line readings + verdict
+void     lineCalReport();
+void     lineNoiseReport();                   // 1 s noise measurement per sensor                     // per-sensor floor/line readings + verdict
 
 class LineFollower {
 public:

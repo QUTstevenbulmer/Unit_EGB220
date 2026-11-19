@@ -196,8 +196,8 @@ void runSelfTest() {
     }
 
     // ---- 8. Line sensor: a calibration sweep checks every channel
-    Log.println(F("\r\n[LINE] Connect the QTR-8A bar to J15, about 3 mm above a white surface"));
-    Log.println(F("       with a black line. You'll sweep it across the line for 10 s."));
+    Log.println(F("\r\n[LINE] QTR-8A bar on J15, about 3 mm above the track. During the next 10 s,"));
+    Log.println(F("       hold the whole bar over the line, then over the floor (all 8 sensors must see both)."));
     if (ask("Start the line sensor sweep?") == T_PASS) {
         lineCalStart();
         uint32_t last = 0;

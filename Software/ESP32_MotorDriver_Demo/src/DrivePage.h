@@ -227,7 +227,7 @@ $('pidBtn').onclick = async () => {
   poll();
 };
 $('lineCal').onclick = () => {
-  if (confirm('Calibrate the line sensor? For 10 s, slide the robot slowly from side to side across the line.')) get('/api/line/cal');
+  if (confirm('Calibrate the line sensor? For 10 s, hold the whole bar over the line, then over the floor.')) get('/api/line/cal');
 };
 $('follow').onclick = () => { release(); wasDriving = false; get('/api/follow'); };
 document.addEventListener('visibilitychange', () => { if (document.hidden && wasDriving) stopAll(false); });

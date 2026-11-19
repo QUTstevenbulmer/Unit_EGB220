@@ -134,7 +134,7 @@ static const char INDEX_HTML[] PROGMEM = R"HTML(
       so shorting it makes it fight its own motion and stop much faster (<b>short brake</b>).</p>
       <p><b>Demo</b> plays a short pre-programmed dance: forward, reverse, spin left/right, full speed + brake.
       The servos wave along. Same as pressing <b>SW1</b> on the board.</p>
-      <p><b>Line follow</b> uses the 8 line sensors to steer along a black line on a light floor.
+      <p><b>Line follow</b> uses the 8 line sensors to steer along the line (white on a dark floor by default).
       It steers harder the further the line is from the centre (a <b>proportional</b> controller) and stops if it
       loses the line for 0.4 s. Same as pressing <b>SW2</b>.</p>
       <p>Hold <b>any</b> button on the board for 1 second for an emergency stop.</p>
@@ -170,16 +170,17 @@ static const char INDEX_HTML[] PROGMEM = R"HTML(
     </div>
     <details class="help"><summary>What does this do?</summary>
       <p>The 8 bars are the 8 infra-red sensors on the QTR-8A bar (J15), sensor 1 on the left. Each sensor shines IR
-      light at the floor and measures how much comes back. A dark line reflects less, so its bar fills up.
-      The number under each is how dark it sees: <b>0 = floor</b>, <b>1000 = line</b>. A blue outline means
+      light at the track and measures how much comes back: white reflects a lot, black very little.
+      The number under each says how much it looks like the line: <b>0 = floor</b>, <b>1000 = line</b>
+      (set for a white line on a dark floor - <code>LINE_ACTIVE_HIGH</code> in <code>config.h</code> flips it). A blue outline means
       "this sensor sees the line" (over 500). The dot underneath is the line's position, worked out from all 8.</p>
       <p><b>A</b> = read as analog (a real voltage, 0-4095), <b>D</b> = this pin can only be read as digital (on/off).
       Only some ESP32-S2 pins can measure voltages; the next board revision puts all 8 on analog pins.</p>
-      <p><b>Calibrate</b>: for 10 seconds, slide the bar slowly back and forth across the line so every sensor sees
-      both the line and the floor. The robot remembers each sensor's lightest and darkest reading (saved in flash)
+      <p><b>Calibrate</b>: within 10 seconds, every sensor must see both surfaces - easiest is to hold the whole bar
+      over the line colour for a few seconds, then over the floor colour (or slide sideways so the line passes under all 8). The robot remembers each sensor's lightest and darkest reading (saved in flash)
       and scales them all to 0-1000, so they agree with each other. The Terminal then lists each sensor:
-      <b>OK</b>, <b>weak</b> (check height - about 3 mm is best - or use matte black tape) or <b>NO CHANGE</b>
-      (that sensor or pin isn't working).</p>
+      <b>OK</b>, <b>weak</b> (check height - about 3 mm is best) or <b>NO CHANGE</b>
+      (it didn't see both surfaces, or that sensor or pin isn't working).</p>
       <p><b>Show raw</b> shows the ADC readings instead (0-4095, about 0.8 mV per step).
       Glossy electrical tape can reflect infra-red - matte tape or a laser-printed line works best.</p>
     </details>

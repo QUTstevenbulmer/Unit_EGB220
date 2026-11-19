@@ -19,7 +19,7 @@ LineFollower follower;
 //  Reading the sensors
 //
 //  The QTR-8A bar gives an ANALOG voltage per sensor: low (~0.2 V) over a
-//  white floor, high (~3.3 V) over a black line or in the air. Pins that the
+//  white surface, high (~3.3 V) over a black surface or in the air. Pins that the
 //  ESP32-S2 can read as analog (ADC: IO1-IO20, see pins.h) are read as
 //  analog; any other pin is read as digital (just 0 or 1) - still useful to
 //  check a channel is alive. Values are cached and refreshed ~200x a second.
@@ -27,23 +27,35 @@ LineFollower follower;
 //  Calibration ("line cal", or the web pages): for a few seconds, sweep the
 //  bar over the line and the floor. Each sensor's darkest and lightest
 //  readings are saved in flash, then every sensor is scaled to
-//      0 = floor (white) ... 1000 = line (black)
+//      0 = floor ... 1000 = line   (LINE_ACTIVE_HIGH in config.h says
+//      whether the line is the white or the black surface)
 //  so all 8 behave the same, and the line position becomes smooth.
 // =============================================================================
 static const uint16_t RAW_MAX = 4095;      // 12-bit readings
 static bool     isAnalog[8];
-static uint16_t raw[8];                    // latest raw reading 0..4095
+static uint16_t raw[8];                    // latest (filtered) reading 0..4095
+static float    filt[8];                   // smoothed readings
+static bool     sees[8];                   // "sees the line", with hysteresis
 static uint16_t calMin[8], calMax[8];      // lightest / darkest seen
 static bool     calibrated = false;
 static uint32_t calUntil = 0;              // non-zero = calibrating until then
 static uint32_t lastSample = 0;
 
+// The calibration is stored with the pin list it was made with. If PIN_LINE
+// changes (new board revision, bar flipped...), the old calibration belongs
+// to different sensors, so it's thrown away instead of scrambling readings.
 static void loadCal() {
     Preferences p;
     p.begin("line", true);
-    calibrated = p.getBytes("min", calMin, sizeof(calMin)) == sizeof(calMin) &&
+    uint8_t pins[8] = { 0 };
+    bool samePins = p.getBytes("pins", pins, sizeof(pins)) == sizeof(pins) &&
+                    memcmp(pins, PIN_LINE, sizeof(pins)) == 0;
+    calibrated = samePins &&
+                 p.getBytes("min", calMin, sizeof(calMin)) == sizeof(calMin) &&
                  p.getBytes("max", calMax, sizeof(calMax)) == sizeof(calMax);
+    bool hadOld = !samePins && p.isKey("min");
     p.end();
+    if (hadOld) Log.println(F("[line] pin map changed since the last calibration - please run: line cal"));
 }
 
 static void saveCal() {
@@ -51,6 +63,7 @@ static void saveCal() {
     p.begin("line", false);
     p.putBytes("min", calMin, sizeof(calMin));
     p.putBytes("max", calMax, sizeof(calMax));
+    p.putBytes("pins", PIN_LINE, sizeof(PIN_LINE));
     p.end();
 }
 
@@ -67,19 +80,37 @@ void lineBegin() {
     loadCal();
 }
 
+// One clean reading of an analog pin.
+//  * The ESP32 has one ADC shared by all pins. Its sampling capacitor still
+//    holds some of the PREVIOUS pin's voltage, and the QTR-8A's 47k outputs
+//    are slow to correct it - so the first reading after switching pins is
+//    thrown away ("crosstalk" fix).
+//  * Then take a few readings and use the MIDDLE one (median): one odd spike
+//    from WiFi or motor noise can't drag it the way it would an average.
+//  * ADC2 pins (IO11-IO20) can be blocked by WiFi: that returns 0, skip it.
+static bool readAnalog(uint8_t pin, uint16_t& out) {
+    uint16_t r[9]; uint8_t n = 0;
+    analogRead(pin);                                   // settle (discard)
+    for (uint8_t k = 0; k < LINE_SAMPLES && k < 9; k++) {
+        uint16_t v = analogRead(pin);
+        if (v) r[n++] = v;
+    }
+    if (!n) return false;
+    for (uint8_t a = 1; a < n; a++)                    // tiny insertion sort
+        for (uint8_t b = a; b > 0 && r[b] < r[b - 1]; b--) { uint16_t t = r[b]; r[b] = r[b - 1]; r[b - 1] = t; }
+    out = r[n / 2];
+    return true;
+}
+
 static void sample() {
     for (uint8_t i = 0; i < 8; i++) {
         uint16_t v;
         if (isAnalog[i]) {
-            // Average a few readings. Pins on ADC2 (IO11-IO20) share the ADC
-            // with WiFi: a blocked read returns 0, so skip those.
-            uint32_t sum = 0; uint8_t n = 0;
-            for (uint8_t k = 0; k < LINE_SAMPLES; k++) {
-                uint16_t r = analogRead(PIN_LINE[i]);
-                if (r) { sum += r; n++; }
-            }
-            if (!n) continue;                      // keep the last good value
-            v = sum / n;
+            if (!readAnalog(PIN_LINE[i], v)) continue;     // keep the last good value
+            // Light smoothing (time constant ~25 ms): steadies the bars
+            // without slowing the line follower noticeably
+            filt[i] += (v - filt[i]) * LINE_SMOOTHING;
+            v = (uint16_t)(filt[i] + 0.5f);
         } else {
             v = digitalRead(PIN_LINE[i]) ? RAW_MAX : 0;
         }
@@ -92,7 +123,7 @@ static void sample() {
 }
 
 static void sampleIfStale() {
-    if (millis() - lastSample >= 5) { lastSample = millis(); sample(); }
+    if (millis() - lastSample >= 10) { lastSample = millis(); sample(); }   // 100x a second
 }
 
 // Call from loop(): keeps readings fresh and finishes a calibration.
@@ -111,10 +142,11 @@ void lineUpdate() {
 void lineCalStart(uint32_t ms) {
     for (uint8_t i = 0; i < 8; i++) { calMin[i] = RAW_MAX; calMax[i] = 0; }
     calUntil = millis() + ms;
-    Log.printf("[line] calibrating for %lu s - sweep the sensor bar slowly back and forth\r\n"
-               "       across the line so EVERY sensor sees both the line and the floor\r\n",
+    Log.printf("[line] calibrating for %lu s - EVERY sensor must see both surfaces:\r\n"
+               "       hold the whole bar over the line colour for a few seconds, then the whole\r\n"
+               "       bar over the floor colour (or slide sideways so the line passes under all 8)\r\n",
                (unsigned long)(ms / 1000));
-    displayMessage("Calibrating line", "sweep over line");
+    displayMessage("Calibrating line", "line, then floor");
 }
 
 bool lineCalibrating() { return calUntil != 0; }
@@ -132,9 +164,9 @@ void lineCalReport() {
         int range = (int)calMax[i] - (int)calMin[i];
         const char* verdict = !calibrated ? "not calibrated"
                             : range > 1500 ? "OK"
-                            : range > 400  ? "weak - check height / tape"
-                            :                "NO CHANGE - check this sensor / pin";
-        Log.printf("  %u from left  LF_%u  IO%-2u  %-7s  floor %4u  line %4u   %s\r\n", i + 1, LINE_LF_NUM[i],
+                            : range > 400  ? "weak - check height, or didn't see both surfaces"
+                            :                "NO CHANGE - didn't see both surfaces, or check sensor / pin";
+        Log.printf("  %u from left  LF_%u  IO%-2u  %-7s  light %4u  dark %4u   %s\r\n", i + 1, LINE_LF_NUM[i],
                    PIN_LINE[i], isAnalog[i] ? "analog" : "digital", calMin[i], calMax[i], verdict);
     }
 }
@@ -155,11 +187,48 @@ uint16_t lineValue(uint8_t i) {
 uint16_t lineRaw(uint8_t i)      { sampleIfStale(); return i < 8 ? raw[i] : 0; }
 bool     lineIsAnalog(uint8_t i) { return i < 8 && isAnalog[i]; }
 
-// Which sensors see the line (value over LINE_THRESHOLD): bit 0 = LF_1
+// Which sensors see the line: bit 0 = left-most sensor.
+// Hysteresis: a sensor switches ON above THRESHOLD + HYSTERESIS and OFF below
+// THRESHOLD - HYSTERESIS, so one hovering near the edge doesn't flicker.
 uint8_t lineRead() {
     uint8_t mask = 0;
-    for (uint8_t i = 0; i < 8; i++) if (lineValue(i) > LINE_THRESHOLD) mask |= (1 << i);
+    for (uint8_t i = 0; i < 8; i++) {
+        uint16_t v = lineValue(i);
+        if (v > LINE_THRESHOLD + LINE_HYSTERESIS) sees[i] = true;
+        else if (v < LINE_THRESHOLD - LINE_HYSTERESIS) sees[i] = false;
+        if (sees[i]) mask |= (1 << i);
+    }
     return mask;
+}
+
+// Diagnostics: hold the bar still, then measure each channel for 1 s.
+// Big "noise" (max - min) on one channel = a bad joint, a wire picking up
+// noise, or a sensor sitting right at the edge of the line.
+void lineNoiseReport() {
+    uint16_t mn[8], mx[8]; uint32_t sum[8] = { 0 }; uint16_t n = 0;
+    for (uint8_t i = 0; i < 8; i++) { mn[i] = RAW_MAX; mx[i] = 0; }
+    Log.println(F("[line] measuring noise for 1 s - keep the bar still..."));
+    uint32_t t0 = millis();
+    while (millis() - t0 < 1000) {
+        for (uint8_t i = 0; i < 8; i++) {
+            uint16_t v;
+            if (isAnalog[i]) { analogRead(PIN_LINE[i]); v = analogRead(PIN_LINE[i]); }
+            else v = digitalRead(PIN_LINE[i]) ? RAW_MAX : 0;
+            if (v < mn[i]) mn[i] = v;
+            if (v > mx[i]) mx[i] = v;
+            sum[i] += v;
+        }
+        n++;
+        delay(2);
+    }
+    Log.println(F("  sensor          GPIO  average   min   max  noise"));
+    for (uint8_t i = 0; i < 8; i++) {
+        uint16_t pp = mx[i] - mn[i];
+        Log.printf("  %u from left LF_%u  IO%-2u  %5lu  %5u %5u  %5u %s\r\n", i + 1, LINE_LF_NUM[i], PIN_LINE[i],
+                   (unsigned long)(sum[i] / n), mn[i], mx[i], pp,
+                   pp > 400 ? "<- noisy" : pp > 150 ? "<- a bit noisy" : "");
+    }
+    Log.println(F("  (raw 0..4095: about 0.8 mV per step. Under ~150 = steady.)"));
 }
 
 // Smooth position from the 0..1000 values: -1 (far left) .. +1 (far right).

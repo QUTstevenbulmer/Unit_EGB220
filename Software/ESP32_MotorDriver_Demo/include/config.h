@@ -104,10 +104,13 @@
 //  Line sensor (J15) - Pololu QTR-8A (analog: high voltage = dark/line)
 //  Calibrate with "line cal" or the web pages (sweep over line + floor).
 // ---------------------------------------------------------------------------
-#define LINE_ACTIVE_HIGH      true    // true: high reading = line (QTR-8A on a black line)
+#define LINE_ACTIVE_HIGH      false   // false: WHITE line on a dark floor (QTR-8A reads LOW on white)
+                                      // true:  BLACK line on a light floor
 #define LINE_THRESHOLD        500     // 0..1000: above this a sensor "sees" the line
 #define LINE_CAL_MS           10000   // calibration sweep time
-#define LINE_SAMPLES          4       // ADC readings averaged per sensor
+#define LINE_SAMPLES          5       // ADC readings per sensor (the median is used)
+#define LINE_SMOOTHING        0.35f   // 0..1: lower = smoother but slower
+#define LINE_HYSTERESIS       60      // a sensor must pass THRESHOLD +/- this to switch
 #define FOLLOW_BASE_SPEED     35      // % - cruising speed when line following
 #define FOLLOW_KP             40      // steering strength (try 20..80)
 #define FOLLOW_LOST_MS        400     // stop if the line is lost this long
@@ -124,4 +127,4 @@
 #define LOG_BUFFER_BYTES      6144
 
 // Firmware version shown in the banner, OLED and web page
-#define FW_VERSION            "1.10.1"
+#define FW_VERSION            "1.10.3"
